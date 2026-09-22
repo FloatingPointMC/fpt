@@ -1,244 +1,322 @@
 # Java WebSocket IRC
 
-一个基于 **Java + WebSocket** 实现的轻量级实时 IRC / 聊天系统。
+一个基于 **Spring Boot + WebSocket** 实现的轻量级 IRC / 实时聊天系统。
 
-项目以实时通信为核心，使用 WebSocket 实现客户端与服务端之间的双向通信，并结合 **RBAC、MariaDB、Redis** 实现用户权限管理、聊天记录持久化以及在线状态与高频数据缓存。
+项目采用分层架构，将 **WebSocket 传输层、消息协议层、业务应用层、领域模型和基础设施层** 解耦，并使用 **RBAC、MariaDB、Redis** 实现权限控制、聊天记录持久化以及实时状态管理。
 
-> 本项目主要用于学习、实践和展示实时通信、权限控制、缓存与数据库设计等后端开发能力。
+本项目主要用于实践和展示 Java 后端开发、实时通信、权限系统、缓存、数据库设计以及网络协议设计能力。
 
 ## ✨ Features
 
-* 🔌 基于 WebSocket 的实时双向通信
-* 💬 公共聊天室 / 公共频道
+* 🔌 基于 Spring WebSocket 的实时双向通信
+* 💬 公共频道聊天
 * 📝 聊天记录持久化
 * 👤 用户管理
-* 🔐 RBAC（Role-Based Access Control）权限控制
+* 🔐 RBAC 权限控制
 * 🚫 用户封禁 / 解封
-* 🔇 用户禁言 / 解除禁言
-* ⚡ Redis 缓存
-* 💾 MariaDB 持久化存储
-* 🕐 在线状态管理
+* 🔇 用户禁言 / 解禁
+* ⚡ Redis 缓存与在线状态管理
+* 💾 MariaDB 持久化
 * 📡 实时消息广播
-* 🛡️ 服务端权限校验
+* 🔄 WebSocket Session 管理
+* 📨 独立的客户端 / 服务端消息协议
+* 🛡️ 服务端认证与授权
+* 🧩 协议层与业务逻辑解耦
 
-## 🏗️ Tech Stack
+## 🛠️ Tech Stack
 
-| 技术        | 用途               |
-| --------- | ---------------- |
-| Java      | 后端主要开发语言         |
-| WebSocket | 实时双向通信           |
-| MariaDB   | 用户、权限、聊天记录等持久化数据 |
-| Redis     | 缓存、在线状态及高频访问数据   |
-| RBAC      | 用户角色与权限管理        |
+| 技术               | 用途                    |
+| ---------------- | --------------------- |
+| Java             | 后端主要开发语言              |
+| Spring Boot      | 应用框架                  |
+| Spring WebSocket | WebSocket 实时通信        |
+| Spring Security  | 身份认证与安全控制             |
+| MariaDB          | 业务数据及聊天记录持久化          |
+| Redis            | 缓存、在线状态、Session 等实时数据 |
+| RBAC             | 用户角色与权限管理             |
 
-### Architecture
+## 🏗️ Architecture
+
+项目采用分层架构，将网络通信、协议解析、业务逻辑和数据访问进行解耦。
 
 ```text
-                    ┌───────────────┐
-                    │    Client     │
-                    │ WebSocket/HTTP│
-                    └───────┬───────┘
+                         Client
                             │
-                            │ WebSocket
+                       WebSocket
+                            │
                             ▼
-                    ┌───────────────┐
-                    │  Java Server  │
-                    │               │
-                    │ Auth / RBAC   │
-                    │ Chat Service  │
-                    │ Message Bus   │
-                    └───────┬───────┘
-                            │
-                 ┌──────────┴──────────┐
-                 │                     │
-                 ▼                     ▼
-          ┌──────────────┐      ┌──────────────┐
-          │    Redis     │      │   MariaDB    │
-          │              │      │              │
-          │ Cache        │      │ Users        │
-          │ Online State │      │ Roles        │
-          │ Session Data │      │ Permissions  │
-          │              │      │ Messages     │
-          └──────────────┘      └──────────────┘
+                  ┌──────────────────┐
+                  │ WebSocket Adapter│
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Protocol Layer   │
+                  │ Decode / Encode  │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Command Handler  │
+                  └────────┬─────────┘
+                           │
+                           ▼
+                  ┌──────────────────┐
+                  │ Application      │
+                  │ Services         │
+                  └────────┬─────────┘
+                           │
+            ┌──────────────┼──────────────┐
+            ▼              ▼              ▼
+        Security         Chat          Channel
+            │              │              │
+            └──────────────┼──────────────┘
+                           │
+                  ┌────────┴────────┐
+                  ▼                 ▼
+               Redis             MariaDB
 ```
 
-## 💬 Core Features
+### Layer Responsibilities
 
-### Public Chat
+#### Transport Layer
 
-用户连接 WebSocket 后可以进入公共聊天频道。
-
-消息经过服务端处理后广播给当前频道中的在线用户。
+负责 WebSocket 连接生命周期以及客户端连接管理。
 
 ```text
-Client A ──┐
-           │
-Client B ──┼──> WebSocket Server ──> Public Channel
-           │
-Client C ──┘
+WebSocket
+    │
+    ├── Connect
+    ├── Authenticate
+    ├── Receive
+    ├── Send
+    └── Disconnect
 ```
 
-服务端负责：
+该层不直接处理具体聊天业务。
 
-1. 验证用户身份
-2. 检查用户是否被封禁或禁言
-3. 校验发送权限
-4. 保存聊天记录
-5. 广播消息
+#### Protocol Layer
 
-### Chat History
-
-聊天消息会持久化到 MariaDB，方便进行历史消息查询。
-
-典型消息数据包括：
-
-* 消息 ID
-* 发送者 ID
-* 频道 ID
-* 消息内容
-* 创建时间
-
-示例：
+负责客户端与服务端之间的消息协议。
 
 ```text
-User A
-  │
-  │ "Hello!"
-  ▼
-WebSocket Server
-  │
-  ├──> Redis
-  │
-  └──> MariaDB
+Client Message
+       │
+       ▼
+   Decoder
+       │
+       ▼
+   Message
+       │
+       ▼
+   Handler
+```
+
+服务端消息同样经过协议编码后发送给客户端。
+
+#### Application Layer
+
+负责具体业务流程，例如：
+
+* 发送消息
+* 加入频道
+* 离开频道
+* 用户管理
+* 封禁
+* 禁言
+* 权限检查
+
+Application Layer 不应该依赖具体的 WebSocket 实现。
+
+#### Domain Layer
+
+描述 IRC 系统中的核心业务对象，例如：
+
+```text
+User
+Channel
+Message
+Role
+Permission
+Ban
+Mute
+Session
+```
+
+#### Infrastructure Layer
+
+负责外部基础设施：
+
+```text
+MariaDB
+Redis
+WebSocket
+```
+
+业务逻辑尽量不直接依赖具体基础设施实现。
+
+---
+
+# 📦 Protocol
+
+项目借鉴游戏网络协议的设计思路，将客户端和服务端之间的通信抽象为独立的 Message / Packet。
+
+```text
+protocol/
+├── client/
+│   ├── LoginMessage
+│   ├── ChatSendMessage
+│   ├── JoinChannelMessage
+│   └── LeaveChannelMessage
+│
+├── server/
+│   ├── LoginSuccessMessage
+│   ├── LoginFailureMessage
+│   ├── ChatMessage
+│   ├── SystemMessage
+│   └── ErrorMessage
+│
+├── codec/
+└── handler/
+```
+
+### Client → Server
+
+例如发送聊天消息：
+
+```json
+{
+  "type": "CHAT_SEND",
+  "requestId": "abc123",
+  "channel": "public",
+  "content": "Hello!"
+}
+```
+
+### Server → Client
+
+服务器广播：
+
+```json
+{
+  "type": "CHAT_MESSAGE",
+  "messageId": 12345,
+  "channel": "public",
+  "sender": "Alice",
+  "content": "Hello!",
+  "timestamp": 1720000000
+}
+```
+
+### Error
+
+请求失败时，可以通过 `requestId` 将错误与原始请求关联：
+
+```json
+{
+  "type": "ERROR",
+  "requestId": "abc123",
+  "code": "MUTED",
+  "message": "You are currently muted."
+}
+```
+
+这种设计可以使协议层独立于具体业务实现，并方便未来增加新的客户端。
+
+---
+
+# 👤 User & Session
+
+项目将用户和网络连接分离。
+
+```text
+User
+ │
+ ├── Session
+ ├── Session
+ └── Session
+```
+
+同一个用户可以同时拥有多个 WebSocket 连接，例如：
+
+```text
+Alice
+ ├── Browser
+ ├── Desktop Client
+ └── Mobile Client
+```
+
+`User` 表示业务层用户，而 `Session` 表示一次具体的网络连接。
+
+这也便于使用 Redis 管理在线状态和 Session 映射。
+
+---
+
+# 💬 Channel
+
+Channel 是 IRC 的核心领域对象。
+
+```text
+Channel
+├── name
+├── members
+└── messages
+```
+
+例如：
+
+```text
+#general
+#java
+#gaming
+#offtopic
+```
+
+用户通过加入 Channel 接收其中的消息。
+
+```text
+User
+ │
+ └── ChannelMember
           │
           ▼
-      Chat History
+       Channel
 ```
 
-### RBAC
+未来可以进一步支持：
 
-项目采用 **Role-Based Access Control** 管理用户权限。
+* Channel Owner
+* Channel Moderator
+* Channel-specific permissions
+* Private Channel
+* Channel password
+* Channel invite
 
-基本模型：
+---
+
+# 🔐 Authentication & RBAC
+
+项目使用认证机制识别用户身份，并使用 RBAC 控制系统级权限。
+
+基本关系：
 
 ```text
 User
  │
  └── Role
       │
-      ├── Permission
-      ├── Permission
       └── Permission
 ```
 
-例如可以定义：
+例如：
 
-| Role      | 权限             |
-| --------- | -------------- |
-| USER      | 发送消息、查看聊天记录    |
-| MODERATOR | 禁言用户、解除禁言      |
-| ADMIN     | 用户管理、封禁用户、权限管理 |
+| Role      | Permission       |
+| --------- | ---------------- |
+| USER      | 发送消息、加入频道、查看历史消息 |
+| MODERATOR | 禁言、解除禁言          |
+| ADMIN     | 用户管理、封禁、解封、权限管理  |
 
-实际权限可以根据项目需求继续扩展。
-
-### Ban
-
-管理员可以对用户进行封禁。
-
-被封禁用户无法正常使用聊天服务，服务端会在连接和消息处理阶段进行权限检查。
-
-```text
-User
- │
- ▼
-Authentication
- │
- ▼
-Ban Check
- │
- ├── Banned ──> Reject
- │
- └── Normal ──> Continue
-```
-
-### Mute
-
-禁言用于限制用户发送消息，但不影响其查看公共聊天内容。
-
-```text
-User
- │
- ▼
-Send Message
- │
- ▼
-Mute Check
- │
- ├── Muted ──> Reject Message
- │
- └── Normal ──> Broadcast
-```
-
-## 🗄️ Data Storage
-
-### MariaDB
-
-MariaDB 负责持久化核心业务数据，例如：
-
-* 用户
-* 角色
-* 权限
-* 用户角色关系
-* 角色权限关系
-* 聊天消息
-* 封禁记录
-* 禁言记录
-
-示意关系：
-
-```text
-users
-  │
-  └── user_roles
-          │
-          ▼
-        roles
-          │
-          └── role_permissions
-                    │
-                    ▼
-               permissions
-```
-
-聊天数据：
-
-```text
-users
-  │
-  └────────── messages
-                  │
-                  ├── channel_id
-                  ├── content
-                  └── created_at
-```
-
-### Redis
-
-Redis 用于存储访问频率较高、实时性较强的数据，例如：
-
-* 在线用户状态
-* WebSocket Session 映射
-* 用户禁言 / 封禁状态缓存
-* 高频访问数据
-* 临时会话数据
-
-Redis 中的数据并不作为核心业务数据的唯一持久化来源。
-
-## 🔐 Security
-
-服务端不会仅依赖客户端进行权限判断。
-
-所有涉及权限的操作都会在服务端进行校验：
+权限检查发生在服务端。
 
 ```text
 Client Request
@@ -250,75 +328,209 @@ Authentication
 Authorization / RBAC
       │
       ▼
-User Status Check
-      │
-      ▼
 Business Logic
-      │
-      ▼
-Database / Redis
 ```
 
-因此客户端即使构造非法请求，也无法绕过服务端的权限控制。
+客户端不能通过修改消息内容绕过服务端权限检查。
 
-## 📁 Project Structure
+---
 
-项目结构会根据实际实现持续调整，目前推荐采用类似以下结构：
+# 🚫 Moderation
+
+## Ban
+
+封禁记录不会简单地作为 `User.banned = true` 存储，而是作为独立的业务记录。
+
+```text
+Ban
+├── userId
+├── operatorId
+├── reason
+├── createdAt
+└── expiresAt
+```
+
+这样可以记录：
+
+* 谁执行了封禁
+* 封禁原因
+* 封禁开始时间
+* 封禁结束时间
+
+## Mute
+
+禁言与封禁类似：
+
+```text
+Mute
+├── userId
+├── operatorId
+├── reason
+├── createdAt
+└── expiresAt
+```
+
+被禁言用户仍然可以查看聊天内容，但无法发送消息。
+
+---
+
+# 💾 Data Storage
+
+## MariaDB
+
+MariaDB 用于保存核心持久化数据：
+
+* 用户
+* 角色
+* 权限
+* 用户角色关系
+* 角色权限关系
+* Channel
+* Channel Member
+* 聊天记录
+* Ban
+* Mute
+
+建议数据库统一使用：
+
+```sql
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci
+```
+
+这样可以正确存储 Unicode 文本以及 Emoji，并使普通文本比较保持大小写不敏感。
+
+例如用户名：
+
+```text
+Alice
+alice
+ALICE
+```
+
+可以在数据库唯一约束下视为同一个用户名。
+
+## Redis
+
+Redis 用于保存实时性较高的数据，例如：
+
+* 在线用户
+* WebSocket Session
+* 用户状态
+* Ban / Mute 缓存
+* 高频访问数据
+* 临时数据
+
+Redis 不作为核心业务数据的唯一持久化来源。
+
+---
+
+# 📨 Message Flow
+
+普通聊天消息的处理流程：
+
+```text
+Client
+  │
+  │ WebSocket
+  ▼
+WebSocket Adapter
+  │
+  ▼
+Protocol Decoder
+  │
+  ▼
+Chat Message Handler
+  │
+  ▼
+Authentication
+  │
+  ▼
+Authorization / RBAC
+  │
+  ▼
+Mute Check
+  │
+  ▼
+Chat Service
+  │
+  ├───────────────┐
+  ▼               ▼
+MariaDB          Channel
+  │               │
+  │               ▼
+  │          Online Sessions
+  │               │
+  └───────────────┴──> WebSocket
+                         │
+                         ▼
+                       Clients
+```
+
+---
+
+# 🗂️ Project Structure
 
 ```text
 src/
-├── main/
-│   ├── java/
-│   │   └── ...
-│   │       ├── controller/
-│   │       ├── websocket/
-│   │       ├── service/
-│   │       ├── repository/
-│   │       ├── model/
-│   │       ├── security/
-│   │       ├── config/
-│   │       └── util/
-│   │
-│   └── resources/
-│       ├── application.yml
-│       └── ...
-│
-└── test/
-    └── ...
+└── main/
+    ├── java/
+    │   └── com/example/irc/
+    │       │
+    │       ├── application/
+    │       │   ├── chat/
+    │       │   ├── channel/
+    │       │   ├── user/
+    │       │   └── moderation/
+    │       │
+    │       ├── domain/
+    │       │   ├── user/
+    │       │   ├── channel/
+    │       │   ├── message/
+    │       │   └── moderation/
+    │       │
+    │       ├── protocol/
+    │       │   ├── client/
+    │       │   ├── server/
+    │       │   ├── codec/
+    │       │   └── handler/
+    │       │
+    │       ├── infrastructure/
+    │       │   ├── websocket/
+    │       │   ├── redis/
+    │       │   └── mariadb/
+    │       │
+    │       ├── security/
+    │       │   ├── authentication/
+    │       │   └── authorization/
+    │       │
+    │       └── config/
+    │
+    └── resources/
+        ├── application.yml
+        └── ...
 ```
 
-### Module Responsibilities
+---
 
-| Module       | Responsibility    |
-| ------------ | ----------------- |
-| `websocket`  | WebSocket 连接及消息处理 |
-| `controller` | HTTP API          |
-| `service`    | 核心业务逻辑            |
-| `repository` | 数据库访问             |
-| `model`      | 数据模型              |
-| `security`   | 身份认证与 RBAC        |
-| `config`     | 系统配置              |
-| `util`       | 通用工具              |
+# 🚀 Getting Started
 
-## 🚀 Getting Started
-
-### Requirements
-
-开始运行项目之前，请准备：
+## Requirements
 
 * Java
+* Spring Boot
 * MariaDB
 * Redis
 * Git
 
-### Clone
+## Clone
 
 ```bash
 git clone https://github.com/your-name/your-repository.git
 cd your-repository
 ```
 
-### Configure Database
+## Database
 
 创建 MariaDB 数据库：
 
@@ -328,142 +540,129 @@ CREATE DATABASE irc
     COLLATE utf8mb4_unicode_ci;
 ```
 
-然后根据实际配置修改数据库连接信息。
+然后配置数据库连接：
 
-### Configure Redis
+```yaml
+spring:
+  datasource:
+    url: jdbc:mariadb://localhost:3306/irc
+    username: your_username
+    password: your_password
+```
 
-确保 Redis 服务已经启动：
+## Redis
+
+启动 Redis：
 
 ```bash
 redis-server
 ```
 
-然后在项目配置文件中填写 Redis 连接信息。
+并在 Spring Boot 配置中设置 Redis 连接。
 
-### Run
+## Run
 
-根据项目使用的构建工具执行：
+使用 Maven：
 
 ```bash
-# Maven
 ./mvnw spring-boot:run
 ```
 
 或者：
 
 ```bash
-# Gradle
-./gradlew bootRun
-```
-
-> 上述命令取决于项目实际使用的构建系统，请以仓库中的配置为准。
-
-## 📡 WebSocket
-
-WebSocket Endpoint 示例：
-
-```text
-ws://localhost:8080/ws
-```
-
-客户端连接后即可进行实时消息通信。
-
-> Endpoint、消息格式以及认证方式以当前版本代码实现为准。
-
-## 📨 Message Flow
-
-一条普通聊天消息的处理流程：
-
-```text
-Client
-  │
-  │ WebSocket Message
-  ▼
-WebSocket Handler
-  │
-  ▼
-Authentication
-  │
-  ▼
-RBAC / User Status Check
-  │
-  ├── Forbidden ──> Error Response
-  │
-  ▼
-Chat Service
-  │
-  ├──> MariaDB
-  │      └── Save Message
-  │
-  └──> WebSocket Broadcast
-             │
-             ▼
-        Online Clients
-```
-
-## 🧪 Testing
-
-项目将逐步补充以下测试：
-
-* 用户认证测试
-* RBAC 权限测试
-* WebSocket 消息测试
-* 聊天记录持久化测试
-* 封禁 / 解封测试
-* 禁言 / 解禁测试
-* Redis 缓存测试
-* 异常场景测试
-
-运行测试：
-
-```bash
 ./mvnw test
 ```
 
-## 🛣️ Roadmap
+具体启动参数以项目当前版本配置为准。
 
-目前项目主要关注基础实时聊天功能，后续计划：
+---
 
+# 🧪 Testing
+
+计划覆盖：
+
+* Authentication
+* RBAC
+* WebSocket Connection
+* Protocol Encoding / Decoding
+* Chat Service
+* Channel Management
+* Ban / Unban
+* Mute / Unmute
+* Redis
+* MariaDB
+* WebSocket Integration Test
+* Concurrent Connection Test
+
+---
+
+# 🛣️ Roadmap
+
+* [x] Spring Boot 基础框架
+* [x] WebSocket 基础通信
+* [ ] Protocol / Message 系统
+* [ ] 用户认证
+* [ ] RBAC
+* [ ] 公共 Channel
+* [ ] 聊天记录
+* [ ] Redis Session
+* [ ] Ban / Unban
+* [ ] Mute / Unmute
+* [ ] 多 Channel
 * [ ] 私聊
-* [ ] 多频道支持
-* [ ] 聊天室管理
+* [ ] Channel Permission
+* [ ] WebSocket 心跳
+* [ ] 自动重连
 * [ ] 消息分页
 * [ ] 消息撤回
-* [ ] 用户在线状态
-* [ ] WebSocket 心跳与断线重连
-* [ ] 更完善的权限管理
 * [ ] 管理后台
-* [ ] Docker 部署
-* [ ] Docker Compose 一键启动
-* [ ] 单元测试与集成测试
-* [ ] API 文档
+* [ ] Docker / Docker Compose
+* [ ] API Documentation
 * [ ] 性能测试
-* [ ] WebSocket 并发测试
+* [ ] 并发测试
 
-## 🤝 Contributing
+---
 
-欢迎提交 Issue、Pull Request 或提出改进建议。
+# 🎯 Project Goals
 
-如果你希望贡献代码：
+本项目不仅实现一个聊天服务器，同时用于实践以下后端开发能力：
 
-```bash
-git checkout -b feature/your-feature
-```
+* Java / Spring Boot
+* WebSocket 实时通信
+* 网络消息协议设计
+* 分层架构
+* RBAC 权限模型
+* Authentication / Authorization
+* Redis 缓存与 Session 管理
+* MariaDB 数据建模
+* 实时消息广播
+* 并发连接管理
+* WebSocket 生命周期管理
+* 单元测试与集成测试
+* Docker 化部署
 
-完成修改并通过测试后提交 Pull Request。
+---
 
-建议在提交代码时：
+# 🤝 Contributing
 
-* 保持代码风格一致
-* 为重要业务逻辑补充测试
+欢迎提交 Issue、Pull Request 或改进建议。
+
+提交代码时建议：
+
+* 保持现有项目结构
+* 为核心业务逻辑添加测试
 * 不提交数据库密码、Redis 密码等敏感信息
-* 对涉及权限的修改补充权限测试
+* 权限相关修改应添加对应测试
+* 协议修改应同步更新文档
 
-## 📄 License
+---
+
+# 📄 License
 
 本项目采用 **BSD 3-Clause License**。
 
-SPDX Identifier：
+SPDX Identifier:
 
 ```text
 BSD-3-Clause
@@ -471,23 +670,26 @@ BSD-3-Clause
 
 完整许可证文本请见 [`LICENSE`](LICENSE)。
 
-BSD 3-Clause 是 OSI 批准的开源许可证，并允许在满足许可证条件的情况下对源代码和二进制形式进行再发布和修改。
-
 ---
 
-## ⭐ About This Project
+## ⭐ About
 
-这个项目主要用于实践和展示以下后端开发能力：
+这是一个面向学习、实践以及后端开发能力展示的开源 IRC 项目。
 
-* Java 后端开发
-* WebSocket 实时通信
-* RBAC 权限模型
-* Redis 缓存设计
-* MariaDB 数据持久化
-* 实时消息广播
-* 用户状态管理
-* 服务端权限校验
-* WebSocket 异常处理
-* 单元测试与集成测试
+项目重点关注：
 
-如果这个项目对你有帮助，欢迎 Star ⭐
+```text
+Real-time Communication
+        +
+Protocol Design
+        +
+Security
+        +
+Data Persistence
+        +
+Caching
+        +
+Scalable Architecture
+```
+
+欢迎 Star ⭐
