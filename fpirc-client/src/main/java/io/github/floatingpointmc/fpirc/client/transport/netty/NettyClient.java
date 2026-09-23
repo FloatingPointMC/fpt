@@ -4,23 +4,9 @@ import io.github.floatingpointmc.fpirc.client.handler.MessageDispatcher;
 import io.github.floatingpointmc.fpirc.common.protocol.Message;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageRegistry;
 import io.github.floatingpointmc.fpirc.common.protocol.ProtocolConstants;
-
-import java.net.URI;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
@@ -28,6 +14,12 @@ import io.netty.handler.codec.http.websocketx.WebSocketClientHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketClientHandshakerFactory;
 import io.netty.handler.codec.http.websocketx.WebSocketClientProtocolHandler;
 import io.netty.handler.codec.http.websocketx.WebSocketVersion;
+
+import java.net.URI;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 public final class NettyClient {
 
@@ -57,7 +49,7 @@ public final class NettyClient {
             port = "wss".equals(scheme) ? 443 : 80;
         }
 
-        eventLoopGroup = new NioEventLoopGroup();
+        eventLoopGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
 
         WebSocketClientHandshaker handshaker = WebSocketClientHandshakerFactory.newHandshaker(
                 uri, WebSocketVersion.V13, null, true, null, 65536);
@@ -83,8 +75,6 @@ public final class NettyClient {
                             public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
                                 if (evt == WebSocketClientProtocolHandler.ClientHandshakeStateEvent.HANDSHAKE_COMPLETE) {
                                     handshakeLatch.countDown();
-                                } else if (evt == WebSocketClientProtocolHandler.ClientHandshakeStateEvent.HANDSHAKE_ISSUED) {
-                                    // handshake started
                                 }
                                 ctx.fireUserEventTriggered(evt);
                             }

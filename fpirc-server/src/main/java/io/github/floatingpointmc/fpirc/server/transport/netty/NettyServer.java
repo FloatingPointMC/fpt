@@ -3,18 +3,12 @@ package io.github.floatingpointmc.fpirc.server.transport.netty;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageRegistry;
 import io.github.floatingpointmc.fpirc.server.connection.ConnectionManager;
 import io.github.floatingpointmc.fpirc.server.handler.MessageDispatcher;
-import io.github.floatingpointmc.fpirc.common.protocol.ProtocolConstants;
-
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+
+import java.util.logging.Logger;
 
 public final class NettyServer {
 
@@ -40,8 +34,8 @@ public final class NettyServer {
     }
 
     public void start() throws InterruptedException {
-        bossGroup = new NioEventLoopGroup(1);
-        workerGroup = new NioEventLoopGroup();
+        bossGroup = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());
+        workerGroup = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
 
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
