@@ -1,10 +1,11 @@
 package io.github.floatingpointmc.fpirc.common.protocol;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.HashMap;
 import java.util.Map;
 
 public final class MessageRegistry {
-
     private final Map<Integer, Entry<?>> idToEntry = new HashMap<>();
     private final Map<Class<?>, Entry<?>> typeToEntry = new HashMap<>();
 
@@ -43,19 +44,19 @@ public final class MessageRegistry {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Message> MessageCodec<T> getCodec(int packetId) {
+    public <T extends Message> @NotNull MessageCodec<T> getCodec(int packetId) {
         Entry<?> entry = idToEntry.get(packetId);
         if (entry == null) {
-            return null;
+            throw new NullPointerException("Packet ID " + packetId + " is not registered");
         }
         return (MessageCodec<T>) entry.codec;
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Message> MessageCodec<T> getCodec(Class<T> messageType) {
+    public <T extends Message> @NotNull MessageCodec<T> getCodec(Class<T> messageType) {
         Entry<?> entry = typeToEntry.get(messageType);
         if (entry == null) {
-            return null;
+            throw new NullPointerException("Unregistered message: " + messageType.getName());
         }
         return (MessageCodec<T>) entry.codec;
     }
@@ -69,7 +70,6 @@ public final class MessageRegistry {
     }
 
     private static final class Entry<T extends Message> {
-
         private final int packetId;
         private final Class<T> messageType;
         private final MessageCodec<T> codec;
@@ -78,18 +78,6 @@ public final class MessageRegistry {
             this.packetId = packetId;
             this.messageType = messageType;
             this.codec = codec;
-        }
-
-        int packetId() {
-            return packetId;
-        }
-
-        Class<T> messageType() {
-            return messageType;
-        }
-
-        MessageCodec<T> codec() {
-            return codec;
         }
     }
 }

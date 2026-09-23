@@ -1,17 +1,22 @@
 package io.github.floatingpointmc.fpirc.server.connection;
 
-import io.github.floatingpointmc.fpirc.common.protocol.Message;
+import io.github.floatingpointmc.fpirc.common.protocol.S2CMessage;
 import io.github.floatingpointmc.fpirc.server.session.Session;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class Connection {
-
     private static final AtomicLong ID_GENERATOR = new AtomicLong(0);
-
+    @Getter
     private final long id;
+    @Getter
     private final String remoteAddress;
+    @Setter
     private volatile MessageSender messageSender;
+    @Setter
+    @Getter
     private volatile Session session;
 
     public Connection(String remoteAddress) {
@@ -19,27 +24,7 @@ public final class Connection {
         this.remoteAddress = remoteAddress;
     }
 
-    public long getId() {
-        return id;
-    }
-
-    public String getRemoteAddress() {
-        return remoteAddress;
-    }
-
-    public void setMessageSender(MessageSender sender) {
-        this.messageSender = sender;
-    }
-
-    public Session getSession() {
-        return session;
-    }
-
-    public void setSession(Session session) {
-        this.session = session;
-    }
-
-    public void send(Message message) {
+    public void send(S2CMessage message) {
         MessageSender sender = messageSender;
         if (sender != null) {
             sender.send(message);

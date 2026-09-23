@@ -1,7 +1,7 @@
 package io.github.floatingpointmc.fpirc.client.transport.netty;
 
 import io.github.floatingpointmc.fpirc.client.handler.MessageDispatcher;
-import io.github.floatingpointmc.fpirc.common.protocol.Message;
+import io.github.floatingpointmc.fpirc.common.protocol.C2SMessage;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageRegistry;
 import io.github.floatingpointmc.fpirc.common.protocol.ProtocolConstants;
 import io.netty.bootstrap.Bootstrap;
@@ -28,15 +28,18 @@ public final class NettyClient {
     private static final long HANDSHAKE_TIMEOUT_SECONDS = 10;
 
     private final String url;
-    private final MessageRegistry messageRegistry;
+    private final MessageRegistry c2sRegistry;
+    private final MessageRegistry s2cRegistry;
     private final MessageDispatcher messageDispatcher;
 
     private EventLoopGroup eventLoopGroup;
     private Channel channel;
 
-    public NettyClient(String url, MessageRegistry messageRegistry, MessageDispatcher messageDispatcher) {
+    public NettyClient(String url, MessageRegistry c2sRegistry, MessageRegistry s2cRegistry,
+                       MessageDispatcher messageDispatcher) {
         this.url = url;
-        this.messageRegistry = messageRegistry;
+        this.c2sRegistry = c2sRegistry;
+        this.s2cRegistry = s2cRegistry;
         this.messageDispatcher = messageDispatcher;
     }
 
@@ -89,11 +92,11 @@ public final class NettyClient {
                         pipeline.addLast("ws-frame-adapter", new WebSocketFrameAdapter());
                         pipeline.addLast("fpirc-frame-decoder",
                                 new NettyFrameDecoder(ProtocolConstants.MAX_PACKET_SIZE));
-                        pipeline.addLast("fpirc-message-decoder",
-                                new NettyMessageDecoder(messageRegistry));
+                        pipeline.addLast("fpirc-s2c-decoder",
+                                new NettyMessageDecoder(s2cRegistry));
                         pipeline.addLast("ws-frame-wrapper", new WebSocketFrameWrapper());
-                        pipeline.addLast("fpirc-message-encoder",
-                                new NettyMessageEncoder(messageRegistry));
+                        pipeline.addLast("fpirc-c2s-encoder",
+                                new NettyMessageEncoder(c2sRegistry));
                         pipeline.addLast("fpirc-handler",
                                 new NettyClientHandler(messageDispatcher));
                     }
@@ -118,7 +121,7 @@ public final class NettyClient {
         LOGGER.info("FPIRC Client connected to " + url);
     }
 
-    public void send(Message message) {
+    public void send(C2SMessage message) {
         if (channel != null && channel.isActive()) {
             channel.writeAndFlush(message);
         }

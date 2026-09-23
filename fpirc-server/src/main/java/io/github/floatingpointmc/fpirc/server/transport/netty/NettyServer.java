@@ -16,7 +16,8 @@ public final class NettyServer {
 
     private final String host;
     private final int port;
-    private final MessageRegistry messageRegistry;
+    private final MessageRegistry c2sRegistry;
+    private final MessageRegistry s2cRegistry;
     private final ConnectionManager connectionManager;
     private final MessageDispatcher messageDispatcher;
 
@@ -24,11 +25,12 @@ public final class NettyServer {
     private EventLoopGroup workerGroup;
     private Channel serverChannel;
 
-    public NettyServer(String host, int port, MessageRegistry messageRegistry,
+    public NettyServer(String host, int port, MessageRegistry c2sRegistry, MessageRegistry s2cRegistry,
                        ConnectionManager connectionManager, MessageDispatcher messageDispatcher) {
         this.host = host;
         this.port = port;
-        this.messageRegistry = messageRegistry;
+        this.c2sRegistry = c2sRegistry;
+        this.s2cRegistry = s2cRegistry;
         this.connectionManager = connectionManager;
         this.messageDispatcher = messageDispatcher;
     }
@@ -40,7 +42,7 @@ public final class NettyServer {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
-                .childHandler(new NettyServerInitializer(messageRegistry, connectionManager, messageDispatcher))
+                .childHandler(new NettyServerInitializer(c2sRegistry, s2cRegistry, connectionManager, messageDispatcher))
                 .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
 

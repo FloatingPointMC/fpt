@@ -19,14 +19,16 @@ public final class NettyServerInitializer extends ChannelInitializer<SocketChann
 
     private static final String WEBSOCKET_PATH = "/";
 
-    private final MessageRegistry messageRegistry;
+    private final MessageRegistry c2sRegistry;
+    private final MessageRegistry s2cRegistry;
     private final ConnectionManager connectionManager;
     private final MessageDispatcher messageDispatcher;
 
-    public NettyServerInitializer(MessageRegistry messageRegistry,
+    public NettyServerInitializer(MessageRegistry c2sRegistry, MessageRegistry s2cRegistry,
                                   ConnectionManager connectionManager,
                                   MessageDispatcher messageDispatcher) {
-        this.messageRegistry = messageRegistry;
+        this.c2sRegistry = c2sRegistry;
+        this.s2cRegistry = s2cRegistry;
         this.connectionManager = connectionManager;
         this.messageDispatcher = messageDispatcher;
     }
@@ -41,9 +43,9 @@ public final class NettyServerInitializer extends ChannelInitializer<SocketChann
         pipeline.addLast("ws-protocol", new WebSocketServerProtocolHandler(WEBSOCKET_PATH, null, true));
         pipeline.addLast("ws-frame-adapter", new WebSocketFrameAdapter());
         pipeline.addLast("fpirc-frame-decoder", new NettyFrameDecoder(ProtocolConstants.MAX_PACKET_SIZE));
-        pipeline.addLast("fpirc-message-decoder", new NettyMessageDecoder(messageRegistry));
+        pipeline.addLast("fpirc-c2s-decoder", new NettyMessageDecoder(c2sRegistry));
         pipeline.addLast("ws-frame-wrapper", new WebSocketFrameWrapper());
-        pipeline.addLast("fpirc-message-encoder", new NettyMessageEncoder(messageRegistry));
+        pipeline.addLast("fpirc-s2c-encoder", new NettyMessageEncoder(s2cRegistry));
         pipeline.addLast("fpirc-handler", new NettyServerHandler(messageDispatcher));
     }
 }

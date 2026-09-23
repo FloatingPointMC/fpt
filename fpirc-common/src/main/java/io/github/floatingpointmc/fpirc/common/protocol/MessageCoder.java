@@ -18,7 +18,6 @@ public final class MessageCoder {
         return decodeWithCodec(codec, payload);
     }
 
-    @SuppressWarnings("unchecked")
     private static <T extends Message> T decodeWithCodec(MessageCodec<T> codec, ByteBuffer payload)
             throws MessageDecodeException {
         return codec.decode(payload);
@@ -40,11 +39,7 @@ public final class MessageCoder {
         int lengthSize = VarInt.varIntSize(payloadLength);
         byte[] packet = new byte[lengthSize + payloadLength];
 
-        try {
-            VarInt.writeVarInt(packet, 0, payloadLength);
-        } catch (MessageEncodeException e) {
-            throw e;
-        }
+        VarInt.writeVarInt(packet, 0, payloadLength);
         payloadBuffer.get(packet, lengthSize, payloadLength);
 
         return packet;

@@ -6,15 +6,18 @@ import io.github.floatingpointmc.fpirc.server.api.ServerState;
 import io.github.floatingpointmc.fpirc.server.connection.ConnectionManager;
 import io.github.floatingpointmc.fpirc.server.handler.MessageDispatcher;
 import io.github.floatingpointmc.fpirc.server.transport.netty.NettyServer;
+import lombok.Getter;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class ServerLifecycle {
-
+    @Getter
     private final String host;
     private final int port;
     private final AtomicReference<ServerState> state = new AtomicReference<>(ServerState.NEW);
-    private final MessageRegistry messageRegistry;
+    private final MessageRegistry c2sRegistry;
+    private final MessageRegistry s2cRegistry;
+    @Getter
     private final ConnectionManager connectionManager;
     private final MessageDispatcher messageDispatcher;
     private volatile NettyServer nettyServer;
@@ -22,9 +25,10 @@ public final class ServerLifecycle {
     public ServerLifecycle(String host, int port) {
         this.host = host;
         this.port = port;
-        this.messageRegistry = DefaultMessageRegistry.create();
+        this.c2sRegistry = DefaultMessageRegistry.createC2S();
+        this.s2cRegistry = DefaultMessageRegistry.createS2C();
         this.connectionManager = new ConnectionManager();
-        this.messageDispatcher = new MessageDispatcher(messageRegistry, connectionManager);
+        this.messageDispatcher = new MessageDispatcher(connectionManager);
     }
 
     public void start() {
@@ -33,7 +37,7 @@ public final class ServerLifecycle {
         }
 
         try {
-            nettyServer = new NettyServer(host, port, messageRegistry, connectionManager, messageDispatcher);
+            nettyServer = new NettyServer(host, port, c2sRegistry, s2cRegistry, connectionManager, messageDispatcher);
             nettyServer.start();
             state.set(ServerState.RUNNING);
         } catch (Exception e) {
@@ -61,10 +65,6 @@ public final class ServerLifecycle {
         }
     }
 
-    public String getHost() {
-        return host;
-    }
-
     public int getPort() {
         if (nettyServer != null) {
             return nettyServer.getActualPort();
@@ -74,17 +74,5 @@ public final class ServerLifecycle {
 
     public ServerState getState() {
         return state.get();
-    }
-
-    public MessageRegistry getMessageRegistry() {
-        return messageRegistry;
-    }
-
-    public ConnectionManager getConnectionManager() {
-        return connectionManager;
-    }
-
-    public MessageDispatcher getMessageDispatcher() {
-        return messageDispatcher;
     }
 }

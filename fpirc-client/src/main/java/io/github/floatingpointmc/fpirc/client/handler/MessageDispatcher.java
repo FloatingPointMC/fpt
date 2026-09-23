@@ -1,9 +1,9 @@
 package io.github.floatingpointmc.fpirc.client.handler;
 
-import io.github.floatingpointmc.fpirc.common.protocol.Message;
-import io.github.floatingpointmc.fpirc.common.protocol.message.ChatMessage;
-import io.github.floatingpointmc.fpirc.common.protocol.message.DisconnectMessage;
-import io.github.floatingpointmc.fpirc.common.protocol.message.LoginResponseMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.S2CMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.s2c.S2CChatMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.s2c.S2CDisconnectMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.s2c.S2CLoginResponseMessage;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,13 +20,13 @@ public final class MessageDispatcher {
         registerDefaultHandlers();
     }
 
-    public <T extends Message> void registerHandler(Class<T> messageType, MessageHandler<T> handler) {
+    public <T extends S2CMessage> void registerHandler(Class<T> messageType, MessageHandler<T> handler) {
         handlers.put(messageType, handler);
     }
 
     @SuppressWarnings("unchecked")
-    public void dispatch(Message message) {
-        MessageHandler<Message> handler = (MessageHandler<Message>) handlers.get(message.getClass());
+    public void dispatch(S2CMessage message) {
+        MessageHandler<S2CMessage> handler = (MessageHandler<S2CMessage>) handlers.get(message.getClass());
         if (handler != null) {
             try {
                 handler.handle(message);
@@ -39,8 +39,8 @@ public final class MessageDispatcher {
     }
 
     private void registerDefaultHandlers() {
-        registerHandler(LoginResponseMessage.class, new LoginResponseMessageHandler());
-        registerHandler(ChatMessage.class, new ChatMessageHandler());
-        registerHandler(DisconnectMessage.class, new DisconnectMessageHandler());
+        registerHandler(S2CLoginResponseMessage.class, new LoginResponseMessageHandler());
+        registerHandler(S2CChatMessage.class, new ChatMessageHandler());
+        registerHandler(S2CDisconnectMessage.class, new DisconnectMessageHandler());
     }
 }

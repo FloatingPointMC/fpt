@@ -1,30 +1,30 @@
-package io.github.floatingpointmc.fpirc.common.protocol.codec;
+package io.github.floatingpointmc.fpirc.common.protocol.codec.s2c;
 
 import io.github.floatingpointmc.fpirc.common.protocol.MessageCodec;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageDecodeException;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageEncodeException;
 import io.github.floatingpointmc.fpirc.common.protocol.ProtocolConstants;
 import io.github.floatingpointmc.fpirc.common.protocol.StringCodec;
-import io.github.floatingpointmc.fpirc.common.protocol.message.DisconnectMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.s2c.S2CDisconnectMessage;
 
 import java.nio.ByteBuffer;
 
-public final class DisconnectMessageCodec implements MessageCodec<DisconnectMessage> {
+public final class S2CDisconnectMessageCodec implements MessageCodec<S2CDisconnectMessage> {
 
-    public DisconnectMessageCodec() {
+    public S2CDisconnectMessageCodec() {
     }
 
     @Override
-    public DisconnectMessage decode(ByteBuffer buffer) throws MessageDecodeException {
+    public S2CDisconnectMessage decode(ByteBuffer buffer) throws MessageDecodeException {
         String reason = StringCodec.readString(buffer);
         if (reason.length() > ProtocolConstants.MAX_REASON_LENGTH) {
             throw new MessageDecodeException("Reason too long: " + reason.length() + " > " + ProtocolConstants.MAX_REASON_LENGTH);
         }
-        return new DisconnectMessage(reason);
+        return new S2CDisconnectMessage(reason);
     }
 
     @Override
-    public void encode(DisconnectMessage message, ByteBuffer buffer) throws MessageEncodeException {
+    public void encode(S2CDisconnectMessage message, ByteBuffer buffer) throws MessageEncodeException {
         String reason = message.getReason();
         if (reason.length() > ProtocolConstants.MAX_REASON_LENGTH) {
             throw new MessageEncodeException("Reason too long: " + reason.length() + " > " + ProtocolConstants.MAX_REASON_LENGTH);

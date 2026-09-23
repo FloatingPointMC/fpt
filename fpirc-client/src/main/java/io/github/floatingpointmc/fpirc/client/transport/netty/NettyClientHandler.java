@@ -4,7 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import io.github.floatingpointmc.fpirc.client.handler.MessageDispatcher;
-import io.github.floatingpointmc.fpirc.common.protocol.Message;
+import io.github.floatingpointmc.fpirc.common.protocol.S2CMessage;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,8 +31,8 @@ public final class NettyClientHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (msg instanceof Message) {
-            Message message = (Message) msg;
+        if (msg instanceof S2CMessage) {
+            S2CMessage message = (S2CMessage) msg;
             messageDispatcher.dispatch(message);
         } else {
             ctx.fireChannelRead(msg);

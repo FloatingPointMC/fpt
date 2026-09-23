@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("application")
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 application {
@@ -9,7 +10,6 @@ application {
 
 dependencies {
     implementation(project(":fpirc-common"))
-    implementation(project(":fpirc-client"))
 
     implementation("io.netty:netty-all:4.2.18.Final")
 }

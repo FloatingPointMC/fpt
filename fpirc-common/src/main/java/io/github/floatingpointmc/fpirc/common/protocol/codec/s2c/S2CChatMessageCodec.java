@@ -1,21 +1,21 @@
-package io.github.floatingpointmc.fpirc.common.protocol.codec;
+package io.github.floatingpointmc.fpirc.common.protocol.codec.s2c;
 
 import io.github.floatingpointmc.fpirc.common.protocol.MessageCodec;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageDecodeException;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageEncodeException;
 import io.github.floatingpointmc.fpirc.common.protocol.ProtocolConstants;
 import io.github.floatingpointmc.fpirc.common.protocol.StringCodec;
-import io.github.floatingpointmc.fpirc.common.protocol.message.ChatMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.s2c.S2CChatMessage;
 
 import java.nio.ByteBuffer;
 
-public final class ChatMessageCodec implements MessageCodec<ChatMessage> {
+public final class S2CChatMessageCodec implements MessageCodec<S2CChatMessage> {
 
-    public ChatMessageCodec() {
+    public S2CChatMessageCodec() {
     }
 
     @Override
-    public ChatMessage decode(ByteBuffer buffer) throws MessageDecodeException {
+    public S2CChatMessage decode(ByteBuffer buffer) throws MessageDecodeException {
         String channel = StringCodec.readString(buffer);
         if (channel.isEmpty()) {
             throw new MessageDecodeException("Channel name must not be empty");
@@ -27,11 +27,11 @@ public final class ChatMessageCodec implements MessageCodec<ChatMessage> {
         if (content.length() > ProtocolConstants.MAX_MESSAGE_LENGTH) {
             throw new MessageDecodeException("Chat content too long: " + content.length() + " > " + ProtocolConstants.MAX_MESSAGE_LENGTH);
         }
-        return new ChatMessage(channel, content);
+        return new S2CChatMessage(channel, content);
     }
 
     @Override
-    public void encode(ChatMessage message, ByteBuffer buffer) throws MessageEncodeException {
+    public void encode(S2CChatMessage message, ByteBuffer buffer) throws MessageEncodeException {
         String channel = message.getChannel();
         if (channel.isEmpty()) {
             throw new MessageEncodeException("Channel name must not be empty");

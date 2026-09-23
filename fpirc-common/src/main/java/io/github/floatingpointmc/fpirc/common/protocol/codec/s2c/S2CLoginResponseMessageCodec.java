@@ -1,21 +1,21 @@
-package io.github.floatingpointmc.fpirc.common.protocol.codec;
+package io.github.floatingpointmc.fpirc.common.protocol.codec.s2c;
 
 import io.github.floatingpointmc.fpirc.common.protocol.MessageCodec;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageDecodeException;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageEncodeException;
 import io.github.floatingpointmc.fpirc.common.protocol.ProtocolConstants;
 import io.github.floatingpointmc.fpirc.common.protocol.StringCodec;
-import io.github.floatingpointmc.fpirc.common.protocol.message.LoginResponseMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.s2c.S2CLoginResponseMessage;
 
 import java.nio.ByteBuffer;
 
-public final class LoginResponseMessageCodec implements MessageCodec<LoginResponseMessage> {
+public final class S2CLoginResponseMessageCodec implements MessageCodec<S2CLoginResponseMessage> {
 
-    public LoginResponseMessageCodec() {
+    public S2CLoginResponseMessageCodec() {
     }
 
     @Override
-    public LoginResponseMessage decode(ByteBuffer buffer) throws MessageDecodeException {
+    public S2CLoginResponseMessage decode(ByteBuffer buffer) throws MessageDecodeException {
         if (buffer.remaining() < 1) {
             throw new MessageDecodeException("Not enough bytes for LoginResponse success flag");
         }
@@ -24,11 +24,11 @@ public final class LoginResponseMessageCodec implements MessageCodec<LoginRespon
         if (reason.length() > ProtocolConstants.MAX_REASON_LENGTH) {
             throw new MessageDecodeException("Reason too long: " + reason.length() + " > " + ProtocolConstants.MAX_REASON_LENGTH);
         }
-        return new LoginResponseMessage(success, reason);
+        return new S2CLoginResponseMessage(success, reason);
     }
 
     @Override
-    public void encode(LoginResponseMessage message, ByteBuffer buffer) throws MessageEncodeException {
+    public void encode(S2CLoginResponseMessage message, ByteBuffer buffer) throws MessageEncodeException {
         buffer.put((byte) (message.isSuccess() ? 1 : 0));
         String reason = message.getReason();
         if (reason.length() > ProtocolConstants.MAX_REASON_LENGTH) {

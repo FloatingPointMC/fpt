@@ -4,6 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleStateEvent;
 
+import io.github.floatingpointmc.fpirc.common.protocol.C2SMessage;
 import io.github.floatingpointmc.fpirc.common.protocol.Message;
 import io.github.floatingpointmc.fpirc.server.connection.Connection;
 import io.github.floatingpointmc.fpirc.server.connection.MessageSender;
@@ -43,8 +44,8 @@ public final class NettyServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (msg instanceof Message) {
-            Message message = (Message) msg;
+        if (msg instanceof C2SMessage) {
+            C2SMessage message = (C2SMessage) msg;
             if (connection != null) {
                 messageDispatcher.dispatch(message, connection);
             }

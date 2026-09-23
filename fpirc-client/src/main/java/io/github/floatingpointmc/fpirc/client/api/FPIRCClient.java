@@ -1,7 +1,7 @@
 package io.github.floatingpointmc.fpirc.client.api;
 
 import io.github.floatingpointmc.fpirc.client.core.ClientLifecycle;
-import io.github.floatingpointmc.fpirc.common.protocol.Message;
+import io.github.floatingpointmc.fpirc.common.protocol.C2SMessage;
 
 public final class FPIRCClient {
 
@@ -17,7 +17,7 @@ public final class FPIRCClient {
         return client;
     }
 
-    public void send(Message message) {
+    public void send(C2SMessage message) {
         lifecycle.send(message);
     }
 

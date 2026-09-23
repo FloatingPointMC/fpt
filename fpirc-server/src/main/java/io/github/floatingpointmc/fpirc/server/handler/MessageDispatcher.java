@@ -1,10 +1,9 @@
 package io.github.floatingpointmc.fpirc.server.handler;
 
-import io.github.floatingpointmc.fpirc.common.protocol.Message;
-import io.github.floatingpointmc.fpirc.common.protocol.MessageRegistry;
-import io.github.floatingpointmc.fpirc.common.protocol.message.ChatMessage;
-import io.github.floatingpointmc.fpirc.common.protocol.message.DisconnectMessage;
-import io.github.floatingpointmc.fpirc.common.protocol.message.LoginMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.C2SMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.c2s.C2SChatMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.c2s.C2SDisconnectMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.c2s.C2SLoginMessage;
 import io.github.floatingpointmc.fpirc.server.connection.Connection;
 import io.github.floatingpointmc.fpirc.server.connection.ConnectionManager;
 import io.github.floatingpointmc.fpirc.server.session.Session;
@@ -21,18 +20,18 @@ public final class MessageDispatcher {
     private final Map<Class<?>, MessageHandler<?>> handlers = new HashMap<>();
     private final ConnectionManager connectionManager;
 
-    public MessageDispatcher(MessageRegistry registry, ConnectionManager connectionManager) {
+    public MessageDispatcher(ConnectionManager connectionManager) {
         this.connectionManager = connectionManager;
         registerDefaultHandlers();
     }
 
-    public <T extends Message> void registerHandler(Class<T> messageType, MessageHandler<T> handler) {
+    public <T extends C2SMessage> void registerHandler(Class<T> messageType, MessageHandler<T> handler) {
         handlers.put(messageType, handler);
     }
 
     @SuppressWarnings("unchecked")
-    public void dispatch(Message message, Connection connection) {
-        MessageHandler<Message> handler = (MessageHandler<Message>) handlers.get(message.getClass());
+    public void dispatch(C2SMessage message, Connection connection) {
+        MessageHandler<C2SMessage> handler = (MessageHandler<C2SMessage>) handlers.get(message.getClass());
         if (handler != null) {
             try {
                 handler.handle(message, connection);
@@ -60,8 +59,8 @@ public final class MessageDispatcher {
     }
 
     private void registerDefaultHandlers() {
-        registerHandler(LoginMessage.class, new LoginMessageHandler());
-        registerHandler(ChatMessage.class, new ChatMessageHandler(connectionManager));
-        registerHandler(DisconnectMessage.class, new DisconnectMessageHandler());
+        registerHandler(C2SLoginMessage.class, new LoginMessageHandler());
+        registerHandler(C2SChatMessage.class, new ChatMessageHandler(connectionManager));
+        registerHandler(C2SDisconnectMessage.class, new DisconnectMessageHandler());
     }
 }

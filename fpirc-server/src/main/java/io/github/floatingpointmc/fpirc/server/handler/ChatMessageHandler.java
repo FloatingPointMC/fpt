@@ -1,14 +1,14 @@
 package io.github.floatingpointmc.fpirc.server.handler;
 
-import io.github.floatingpointmc.fpirc.common.protocol.message.ChatMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.c2s.C2SChatMessage;
+import io.github.floatingpointmc.fpirc.common.protocol.message.s2c.S2CChatMessage;
 import io.github.floatingpointmc.fpirc.server.connection.Connection;
 import io.github.floatingpointmc.fpirc.server.connection.ConnectionManager;
 import io.github.floatingpointmc.fpirc.server.session.Session;
 
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class ChatMessageHandler implements MessageHandler<ChatMessage> {
+public final class ChatMessageHandler implements MessageHandler<C2SChatMessage> {
 
     private static final Logger LOGGER = Logger.getLogger(ChatMessageHandler.class.getName());
 
@@ -19,7 +19,7 @@ public final class ChatMessageHandler implements MessageHandler<ChatMessage> {
     }
 
     @Override
-    public void handle(ChatMessage message, Connection connection) {
+    public void handle(C2SChatMessage message, Connection connection) {
         Session session = connection.getSession();
         if (session == null || !session.isAuthenticated()) {
             LOGGER.warning("Unauthenticated chat attempt from " + connection.getRemoteAddress());
@@ -27,7 +27,7 @@ public final class ChatMessageHandler implements MessageHandler<ChatMessage> {
         }
 
         String sender = session.getUsername();
-        ChatMessage broadcast = new ChatMessage(message.getChannel(), sender + ": " + message.getContent());
+        S2CChatMessage broadcast = new S2CChatMessage(message.getChannel(), sender + ": " + message.getContent());
 
         for (Connection conn : connectionManager.getAll()) {
             Session peerSession = conn.getSession();
