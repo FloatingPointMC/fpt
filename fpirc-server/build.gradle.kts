@@ -1,29 +1,15 @@
 plugins {
-    java
-    id("org.springframework.boot") version "4.1.1"
-    id("io.spring.dependency-management") version "1.1.7"
+    id("java")
+    id("application")
 }
 
-group = "io.github.floatingpointmc"
-version = "0.0.1-SNAPSHOT"
-description = "fpirc-server"
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-
-repositories {
-    mavenCentral()
+application {
+    mainClass.set("io.github.floatingpointmc.fpirc.demo.IntegrationDemo")
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-websocket")
-    testImplementation("org.springframework.boot:spring-boot-starter-websocket-test")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
+    implementation(project(":fpirc-common"))
+    implementation(project(":fpirc-client"))
 
-tasks.withType<Test> {
-    useJUnitPlatform()
+    implementation("io.netty:netty-all:4.1.138.Final")
 }

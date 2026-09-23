@@ -1,0 +1,32 @@
+package io.github.floatingpointmc.fpirc.server.core;
+
+public final class ServerConfiguration {
+
+    private final String host;
+    private final int port;
+    private final int maxPacketSize;
+    private final int maxFrameLength;
+
+    public ServerConfiguration(String host, int port) {
+        this.host = host;
+        this.port = port;
+        this.maxPacketSize = 1 << 20;
+        this.maxFrameLength = maxPacketSize + 5;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public int getMaxPacketSize() {
+        return maxPacketSize;
+    }
+
+    public int getMaxFrameLength() {
+        return maxFrameLength;
+    }
+}

@@ -1,5 +1,0 @@
-spring:
-  application:
-    name: fpirc-server
-server:
-  port: 4399

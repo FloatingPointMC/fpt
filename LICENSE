@@ -1,11 +1,115 @@
-Copyright (c) 2026 vlouboos
+                    GNU LESSER GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ Copyright (C) 2026 FloatingPointMC
 
-1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
 
-2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+  This version of the GNU Lesser General Public License incorporates
+the terms and conditions of version 3 of the GNU General Public
+License, supplemented by the additional permissions listed below.
 
-3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+  0. Additional Definitions.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  As used herein, "this License" refers to version 3 of the GNU Lesser
+General Public License, and the "GNU GPL" refers to version 3 of the
+GNU General Public License.
+
+  "The Library" refers to a covered work governed by this License,
+whereas "the Program" refers to a combination of the Library and
+user applications or other software not governed by this License.
+
+  1. Exception to Section 3 of the GNU GPL.
+
+  You may convey a covered work under sections 3 and 4 of the GNU GPL
+without being bound by section 3 of the GNU GPL.
+
+  2. Conveying Modified Versions.
+
+  If you modify a copy of the Library, and, in your modifications, you
+may convey the resulting modified work:
+
+    a) under this License, provided that you make a good faith effort
+    to ensure that, in the event the Library is made available to
+    users under the GNU GPL, you can also make it available under this
+    License; or
+
+    b) under the GNU GPL, with the additional permission that the
+    resulting combined work may also be made available under this
+    License.
+
+  3. Conveying Non-Static Forms.
+
+  You may convey a covered work in non-static form, provided that you
+also convey, in accordance with section 4 of the GNU GPL, the
+machine-readable Corresponding Source.
+
+  4. Combined Works.
+
+  You may convey a Combined Work under terms of your choice that,
+taken together, effectively do not restrict modification of the
+portions of the Library contained in the Combined Work and reverse
+engineering for debugging such modifications, if you also do each of
+the following:
+
+    a) Give prominent notice with each copy of the Combined Work that
+    the Library is used in it and that the Library and its use are
+    covered by this License.
+
+    b) Accompany the Combined Work with a copy of this License.
+
+    c) For a Combined Work that displays copyright notices during
+    execution, include the copyright notice for the Library among
+    these notices.
+
+  5. Combined Libraries.
+
+  You may convey library facilities that are part of the Combined
+Work as a combined library under terms of your choice, provided that
+you also convey, in accordance with this License, the combined
+library linking to the Library.
+
+  6. Versions of the GNU Lesser General Public License.
+
+  The Free Software Foundation may publish revised and/or new versions
+of the GNU Lesser General Public License from time to time. Such new
+versions will be similar in spirit to the present version but may
+differ in detail to address new problems or concerns.
+
+  Each version is given a distinguishing version number. If the
+Library as you received it specifies that a certain version of the
+GNU Lesser General Public License "or any later version" applies to
+it, you have the option of following the terms and conditions either
+of that published version or of any later version published by the
+Free Software Foundation. If the Library as you received it does not
+specify a version number of the GNU Lesser General Public License,
+you may choose any version of the GNU Lesser General Public License
+ever published by the Free Software Foundation.
+
+  If the Library as you received it specifies that a proxy can decide
+whether future versions of the GNU Lesser General Public License shall
+apply, that proxy's public statement of acceptance of any version is
+permanent authorization for you to choose that version for the
+Library.
+
+See the GNU General Public License (GPL) version 3 for the full
+terms and conditions of this license.
+
+                    END OF LICENSE
+
+    FPIRC - FloatingPoint Internet Relay Chat
+    Copyright (C) 2026 FloatingPointMC
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
