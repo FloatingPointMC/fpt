@@ -6,13 +6,14 @@ import io.github.floatingpointmc.fpirc.client.transport.netty.NettyClient;
 import io.github.floatingpointmc.fpirc.common.protocol.DefaultMessageRegistry;
 import io.github.floatingpointmc.fpirc.common.protocol.Message;
 import io.github.floatingpointmc.fpirc.common.protocol.MessageRegistry;
+import lombok.Getter;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class ClientLifecycle {
-
     private final String url;
     private final AtomicReference<ClientState> state = new AtomicReference<>(ClientState.NEW);
+    @Getter
     private final MessageRegistry messageRegistry;
     private final MessageDispatcher messageDispatcher;
     private volatile NettyClient nettyClient;
@@ -67,13 +68,5 @@ public final class ClientLifecycle {
 
     public ClientState getState() {
         return state.get();
-    }
-
-    public MessageRegistry getMessageRegistry() {
-        return messageRegistry;
-    }
-
-    public MessageDispatcher getMessageDispatcher() {
-        return messageDispatcher;
     }
 }

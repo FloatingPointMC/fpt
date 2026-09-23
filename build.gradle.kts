@@ -6,7 +6,7 @@ group = "io.github.floatingpointmc"
 version = "0.1.0"
 
 subprojects {
-    apply(plugin = "java")
+    apply { plugin("java-library") }
 
     repositories {
         mavenCentral()
@@ -14,11 +14,18 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion.set(JavaLanguageVersion.of(8))
         }
     }
 
     tasks.withType<JavaCompile> {
         options.encoding = "UTF-8"
+    }
+
+    dependencies {
+        compileOnly("org.projectlombok:lombok:1.18.36")
+        annotationProcessor("org.projectlombok:lombok:1.18.36")
+        compileOnly("org.jetbrains:annotations:26.1.0")
+        annotationProcessor("org.jetbrains:annotations:26.1.0")
     }
 }

@@ -31,7 +31,8 @@ public final class NettyClientHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (msg instanceof Message message) {
+        if (msg instanceof Message) {
+            Message message = (Message) msg;
             messageDispatcher.dispatch(message);
         } else {
             ctx.fireChannelRead(msg);

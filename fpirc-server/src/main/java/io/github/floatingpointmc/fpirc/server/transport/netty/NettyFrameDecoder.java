@@ -3,6 +3,8 @@ package io.github.floatingpointmc.fpirc.server.transport.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 
 import java.util.List;
 
@@ -15,16 +17,16 @@ public final class NettyFrameDecoder extends ByteToMessageDecoder {
     }
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
         in.markReaderIndex();
 
         VarIntResult lengthResult = tryReadVarInt(in);
-        if (!lengthResult.complete()) {
+        if (!lengthResult.complete) {
             in.resetReaderIndex();
             return;
         }
 
-        int length = lengthResult.value();
+        int length = lengthResult.value;
         if (length < 0) {
             throw new IllegalArgumentException("Negative packet length: " + length);
         }
@@ -63,5 +65,9 @@ public final class NettyFrameDecoder extends ByteToMessageDecoder {
         }
     }
 
-    private record VarIntResult(boolean complete, int value) {}
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
+    private static final class VarIntResult {
+        private final boolean complete;
+        private final int value;
+    }
 }

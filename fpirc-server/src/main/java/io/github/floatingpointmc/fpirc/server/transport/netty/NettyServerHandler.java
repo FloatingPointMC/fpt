@@ -8,6 +8,8 @@ import io.github.floatingpointmc.fpirc.common.protocol.Message;
 import io.github.floatingpointmc.fpirc.server.connection.Connection;
 import io.github.floatingpointmc.fpirc.server.connection.MessageSender;
 import io.github.floatingpointmc.fpirc.server.handler.MessageDispatcher;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,7 +43,8 @@ public final class NettyServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (msg instanceof Message message) {
+        if (msg instanceof Message) {
+            Message message = (Message) msg;
             if (connection != null) {
                 messageDispatcher.dispatch(message, connection);
             }
@@ -66,13 +69,9 @@ public final class NettyServerHandler extends ChannelInboundHandlerAdapter {
         ctx.close();
     }
 
+    @AllArgsConstructor(access = AccessLevel.PRIVATE)
     private static final class NettyMessageSender implements MessageSender {
-
         private final ChannelHandlerContext ctx;
-
-        NettyMessageSender(ChannelHandlerContext ctx) {
-            this.ctx = ctx;
-        }
 
         @Override
         public void send(Message message) {

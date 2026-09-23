@@ -61,5 +61,22 @@ public final class NettyFrameDecoder extends ByteToMessageDecoder {
         }
     }
 
-    private record VarIntResult(boolean complete, int value) {}
+    private static final class VarIntResult {
+
+        private final boolean complete;
+        private final int value;
+
+        VarIntResult(boolean complete, int value) {
+            this.complete = complete;
+            this.value = value;
+        }
+
+        boolean complete() {
+            return complete;
+        }
+
+        int value() {
+            return value;
+        }
+    }
 }

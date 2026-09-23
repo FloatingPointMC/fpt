@@ -1,5 +1,8 @@
 package io.github.floatingpointmc.fpirc.server.core;
 
+import lombok.Getter;
+
+@Getter
 public final class ServerConfiguration {
 
     private final String host;
@@ -12,21 +15,5 @@ public final class ServerConfiguration {
         this.port = port;
         this.maxPacketSize = 1 << 20;
         this.maxFrameLength = maxPacketSize + 5;
-    }
-
-    public String getHost() {
-        return host;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public int getMaxPacketSize() {
-        return maxPacketSize;
-    }
-
-    public int getMaxFrameLength() {
-        return maxFrameLength;
     }
 }

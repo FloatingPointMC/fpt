@@ -40,11 +40,17 @@ public final class Session {
     }
 
     private boolean isValidTransition(SessionState from, SessionState to) {
-        return switch (from) {
-            case CONNECTED -> to == SessionState.AUTHENTICATING || to == SessionState.CLOSED;
-            case AUTHENTICATING -> to == SessionState.AUTHENTICATED || to == SessionState.CLOSED;
-            case AUTHENTICATED -> to == SessionState.CLOSED;
-            case CLOSED -> false;
-        };
+        switch (from) {
+            case CONNECTED:
+                return to == SessionState.AUTHENTICATING || to == SessionState.CLOSED;
+            case AUTHENTICATING:
+                return to == SessionState.AUTHENTICATED || to == SessionState.CLOSED;
+            case AUTHENTICATED:
+                return to == SessionState.CLOSED;
+            case CLOSED:
+                return false;
+            default:
+                return false;
+        }
     }
 }

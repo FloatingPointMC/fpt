@@ -12,7 +12,8 @@ public final class WebSocketFrameAdapter extends MessageToMessageDecoder<WebSock
 
     @Override
     protected void decode(ChannelHandlerContext ctx, WebSocketFrame frame, List<Object> out) {
-        if (frame instanceof BinaryWebSocketFrame binaryFrame) {
+        if (frame instanceof BinaryWebSocketFrame) {
+            BinaryWebSocketFrame binaryFrame = (BinaryWebSocketFrame) frame;
             ByteBuf content = binaryFrame.content().retain();
             out.add(content);
         }

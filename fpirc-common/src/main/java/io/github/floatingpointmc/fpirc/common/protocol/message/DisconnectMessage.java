@@ -1,16 +1,11 @@
 package io.github.floatingpointmc.fpirc.common.protocol.message;
 
 import io.github.floatingpointmc.fpirc.common.protocol.Message;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
+@Getter
+@AllArgsConstructor
 public final class DisconnectMessage implements Message {
-
     private final String reason;
-
-    public DisconnectMessage(String reason) {
-        this.reason = reason;
-    }
-
-    public String getReason() {
-        return reason;
-    }
 }

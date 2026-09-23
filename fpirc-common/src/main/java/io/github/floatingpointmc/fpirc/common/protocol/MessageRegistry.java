@@ -68,9 +68,28 @@ public final class MessageRegistry {
         return typeToEntry.containsKey(messageType);
     }
 
-    private record Entry<T extends Message>(
-        int packetId,
-        Class<T> messageType,
-        MessageCodec<T> codec
-    ) {}
+    private static final class Entry<T extends Message> {
+
+        private final int packetId;
+        private final Class<T> messageType;
+        private final MessageCodec<T> codec;
+
+        Entry(int packetId, Class<T> messageType, MessageCodec<T> codec) {
+            this.packetId = packetId;
+            this.messageType = messageType;
+            this.codec = codec;
+        }
+
+        int packetId() {
+            return packetId;
+        }
+
+        Class<T> messageType() {
+            return messageType;
+        }
+
+        MessageCodec<T> codec() {
+            return codec;
+        }
+    }
 }
