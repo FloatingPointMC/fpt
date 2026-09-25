@@ -10,15 +10,15 @@ plugins {
     id("java")
 }
 
-group = "io.github.floatingpointmc"
-version = "0.1.0"
-
 subprojects {
     apply {
         plugin("java-library")
         plugin("maven-publish")
         plugin("signing")
     }
+
+    group = "io.github.floatingpointmc"
+    version = "0.1.0"
 
     repositories {
         mavenCentral()
