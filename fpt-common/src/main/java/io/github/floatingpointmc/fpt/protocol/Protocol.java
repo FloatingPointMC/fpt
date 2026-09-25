@@ -17,7 +17,6 @@ import java.util.function.BiFunction;
 
 @Getter
 public final class Protocol {
-    public static final Protocol DEFAULT_PROTOCOL = create();
     public static final String DEFAULT_IDENTIFIER = "fpt";
     public static final int DEFAULT_VERSION = 1;
     private final @NotNull String identifier;
@@ -60,7 +59,8 @@ public final class Protocol {
                 Collections.emptyMap());
     }
 
-    public @NotNull Protocol registerC2S(@NotNull Class<? extends C2SMessage> messageType) {
+    @SafeVarargs
+    public final @NotNull Protocol registerC2S(Class<? extends C2SMessage> @NotNull ... messageType) {
         return register(
                 messageType,
                 c2sRegistry,
@@ -77,7 +77,8 @@ public final class Protocol {
         );
     }
 
-    public @NotNull Protocol registerS2C(@NotNull Class<? extends S2CMessage> messageType) {
+    @SafeVarargs
+    public final @NotNull Protocol registerS2C(Class<? extends S2CMessage> @NotNull ... messageType) {
         return register(
                 messageType,
                 s2cRegistry,
@@ -95,16 +96,26 @@ public final class Protocol {
     }
 
     private @NotNull Protocol register(
-            @NotNull Class<? extends Message> messageType,
+            Class<? extends Message> @NotNull [] messages,
             @NotNull MessageRegistry registry,
             @NotNull Map<Class<?>, MessageCodec<?>> codecs,
-            @NotNull BiFunction<MessageRegistry, Map<Class<?>, MessageCodec<?>>, Protocol> factory
+            @NotNull BiFunction<
+                    MessageRegistry,
+                    Map<Class<?>, MessageCodec<?>>,
+                    Protocol
+                    > factory
     ) {
-        MessageCodec<?> msgCodec = AutoMessageCodec.create(messageType, codecMap);
-        MessageRegistry newRegistry = registry.register(messageType);
+        MessageRegistry newRegistry = registry;
+        Map<Class<?>, MessageCodec<?>> newCodecs =
+                new HashMap<>(codecs);
 
-        Map<Class<?>, MessageCodec<?>> newCodecs = new HashMap<>(codecs);
-        newCodecs.put(messageType, msgCodec);
+        for (Class<? extends Message> message : messages) {
+            MessageCodec<?> msgCodec =
+                    AutoMessageCodec.create(message, codecMap);
+
+            newRegistry = newRegistry.register(message);
+            newCodecs.put(message, msgCodec);
+        }
 
         return factory.apply(
                 newRegistry,

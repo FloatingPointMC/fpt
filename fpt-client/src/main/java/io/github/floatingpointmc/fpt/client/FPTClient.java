@@ -1,21 +1,23 @@
 package io.github.floatingpointmc.fpt.client;
 
-import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
 import io.github.floatingpointmc.fpt.transport.MessageListener;
 import io.github.floatingpointmc.fpt.transport.netty.NettyClientTransport;
+import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
 public final class FPTClient {
-
-    public static final Protocol DEFAULT_PROTOCOL = Protocol.DEFAULT_PROTOCOL;
+    public static final Protocol DEFAULT_PROTOCOL = Protocol.create();
 
     private final @NotNull NettyClientTransport transport;
+    @Getter
     private final @NotNull String host;
+    @Getter
     private final int port;
 
-    private FPTClient(@NotNull String host, int port, @NotNull Protocol protocol, @NotNull EventGroup eventGroup, boolean ownedEventGroup, MessageListener listener) {
+    private FPTClient(@NotNull String host, int port, @NotNull Protocol protocol, @NotNull EventGroup eventGroup, boolean ownedEventGroup, @NotNull MessageListener listener) {
         this.host = host;
         this.port = port;
         this.transport = new NettyClientTransport(protocol, eventGroup, ownedEventGroup, listener);
@@ -27,7 +29,7 @@ public final class FPTClient {
 
     public static @NotNull FPTClient connect(@NotNull String host, int port, @NotNull Protocol protocol) {
         EventGroup eventGroup = EventGroup.nio();
-        FPTClient client = new FPTClient(host, port, protocol, eventGroup, true, null);
+        FPTClient client = new FPTClient(host, port, protocol, eventGroup, true, MessageListener.empty());
         client.doConnect();
         return client;
     }
@@ -57,13 +59,5 @@ public final class FPTClient {
 
     public boolean isConnected() {
         return transport.isConnected();
-    }
-
-    public @NotNull String getHost() {
-        return host;
-    }
-
-    public int getPort() {
-        return port;
     }
 }

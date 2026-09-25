@@ -20,7 +20,7 @@ public final class FPTServer {
     }
 
     public static @NotNull FPTServer run(@NotNull String host, int port) {
-        return run(host, port, Protocol.DEFAULT_PROTOCOL);
+        return run(host, port, Protocol.create());
     }
 
     public static @NotNull FPTServer run(@NotNull String host, int port, @NotNull Protocol protocol) {

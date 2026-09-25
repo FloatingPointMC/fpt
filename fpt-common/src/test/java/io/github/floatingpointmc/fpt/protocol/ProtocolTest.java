@@ -80,9 +80,9 @@ class ProtocolTest {
 
     @Test
     void defaultProtocolIsolation() {
-        Protocol custom = Protocol.DEFAULT_PROTOCOL.registerC2S(MessageA.class);
+        Protocol custom = Protocol.create().registerC2S(MessageA.class);
 
-        assertEquals(0, Protocol.DEFAULT_PROTOCOL.getC2sRegistry().size());
+        assertEquals(0, Protocol.create().getC2sRegistry().size());
         assertEquals(1, custom.getC2sRegistry().size());
     }
 
@@ -108,11 +108,11 @@ class ProtocolTest {
 
     @Test
     void codecOverrideDoesNotAffectDefault() {
-        Map<Class<?>, Codec<?>> map = new HashMap<Class<?>, Codec<?>>(Protocol.DEFAULT_PROTOCOL.codec());
+        Map<Class<?>, Codec<?>> map = new HashMap<Class<?>, Codec<?>>(Protocol.create().codec());
         map.put(Integer.class, Fixed32Codec.INSTANCE);
-        Protocol custom = Protocol.DEFAULT_PROTOCOL.codec(map);
+        Protocol custom = Protocol.create().codec(map);
 
-        assertEquals("fpt:int:varint32", Protocol.DEFAULT_PROTOCOL.codec().get(Integer.class).identity());
+        assertEquals("fpt:int:varint32", Protocol.create().codec().get(Integer.class).identity());
         assertEquals("fpt:int:fixed32", custom.codec().get(Integer.class).identity());
     }
 
@@ -125,7 +125,7 @@ class ProtocolTest {
 
     @Test
     void defaultProtocolHasDefaultIdentifierAndVersion() {
-        assertEquals("fpt", Protocol.DEFAULT_PROTOCOL.getIdentifier());
-        assertEquals(1, Protocol.DEFAULT_PROTOCOL.getVersion());
+        assertEquals("fpt", Protocol.create().getIdentifier());
+        assertEquals(1, Protocol.create().getVersion());
     }
 }

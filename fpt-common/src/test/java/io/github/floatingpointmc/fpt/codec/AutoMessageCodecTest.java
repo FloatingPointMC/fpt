@@ -51,9 +51,9 @@ class AutoMessageCodecTest {
     void automaticCodecUsesCurrentProtocolCodecMap() throws Exception {
         Protocol varIntProtocol = Protocol.create().registerC2S(SimpleMessage.class);
 
-        Map<Class<?>, Codec<?>> fixedMap = new HashMap<Class<?>, Codec<?>>(Protocol.DEFAULT_PROTOCOL.codec());
+        Map<Class<?>, Codec<?>> fixedMap = new HashMap<>(Protocol.create().codec());
         fixedMap.put(Integer.class, Fixed32Codec.INSTANCE);
-        Protocol fixed32Protocol = Protocol.DEFAULT_PROTOCOL.codec(fixedMap).registerC2S(SimpleMessage.class);
+        Protocol fixed32Protocol = Protocol.create().codec(fixedMap).registerC2S(SimpleMessage.class);
 
         SimpleMessage msg = new SimpleMessage();
         msg.value = 42;
@@ -90,9 +90,9 @@ class AutoMessageCodecTest {
     void codecOverrideDoesNotAffectDefaultProtocol() throws Exception {
         Protocol varIntDefault = Protocol.create().registerC2S(SimpleMessage.class);
 
-        Map<Class<?>, Codec<?>> fixedMap = new HashMap<Class<?>, Codec<?>>(Protocol.DEFAULT_PROTOCOL.codec());
+        Map<Class<?>, Codec<?>> fixedMap = new HashMap<>(Protocol.create().codec());
         fixedMap.put(Integer.class, Fixed32Codec.INSTANCE);
-        Protocol customBase = Protocol.DEFAULT_PROTOCOL.codec(fixedMap);
+        Protocol customBase = Protocol.create().codec(fixedMap);
         Protocol fixed32Custom = customBase.registerC2S(SimpleMessage.class);
 
         SimpleMessage msg = new SimpleMessage();
