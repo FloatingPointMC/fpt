@@ -3,8 +3,8 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":fpt-common"))
-    implementation(project(":fpt-transport-netty"))
+    api(project(":fpt-common"))
+    api(project(":fpt-transport-netty"))
 
     testImplementation(project(":fpt-common"))
     testImplementation(project(":fpt-transport-netty"))
