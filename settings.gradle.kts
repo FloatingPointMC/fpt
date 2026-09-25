@@ -1,5 +1,6 @@
-rootProject.name = "fpirc"
+rootProject.name = "fpt"
 
-include("fpirc-common")
-include("fpirc-server")
-include("fpirc-client")
+include("fpt-common")
+include("fpt-server")
+include("fpt-client")
+include("fpt-transport-netty")
