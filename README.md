@@ -1,695 +1,500 @@
-# Java WebSocket IRC
+# FPT
 
-一个基于 **Spring Boot + WebSocket** 实现的轻量级 IRC / 实时聊天系统。
+FPT (FloatingPointTransport) is an embeddable and extensible Java network communication and protocol framework.
 
-项目采用分层架构，将 **WebSocket 传输层、消息协议层、业务应用层、领域模型和基础设施层** 解耦，并使用 **RBAC、MariaDB、Redis** 实现权限控制、聊天记录持久化以及实时状态管理。
+Simple by default, extensible when necessary.
 
-本项目主要用于实践和展示 Java 后端开发、实时通信、权限系统、缓存、数据库设计以及网络协议设计能力。
+FPT separates **protocol definition** from **transport implementation**. You define messages and their wire format as a `Protocol`, and FPT handles encoding, decoding, handshake, and transport automatically. The default transport is built on Netty, but the `Protocol` layer does not depend on Netty.
 
-## ✨ Features
+## Tech Stack
 
-* 🔌 基于 Spring WebSocket 的实时双向通信
-* 💬 公共频道聊天
-* 📝 聊天记录持久化
-* 👤 用户管理
-* 🔐 RBAC 权限控制
-* 🚫 用户封禁 / 解封
-* 🔇 用户禁言 / 解禁
-* ⚡ Redis 缓存与在线状态管理
-* 💾 MariaDB 持久化
-* 📡 实时消息广播
-* 🔄 WebSocket Session 管理
-* 📨 独立的客户端 / 服务端消息协议
-* 🛡️ 服务端认证与授权
-* 🧩 协议层与业务逻辑解耦
+| Item | Value |
+|---|---|
+| Library target | Java 8 |
+| Gradle JVM | JDK 25 |
+| Transport | Netty 4.2.18.Final |
+| Build | Gradle (Kotlin DSL) |
+| Test | JUnit Jupiter 5.10.2 |
+| Dev dependencies | Lombok 1.18.36, JetBrains Annotations 26.1.0 |
 
-## 🛠️ Tech Stack
+## Quick Start
 
-| 技术               | 用途                    |
-| ---------------- | --------------------- |
-| Java             | 后端主要开发语言              |
-| Spring Boot      | 应用框架                  |
-| Spring WebSocket | WebSocket 实时通信        |
-| Spring Security  | 身份认证与安全控制             |
-| MariaDB          | 业务数据及聊天记录持久化          |
-| Redis            | 缓存、在线状态、Session 等实时数据 |
-| RBAC             | 用户角色与权限管理             |
+Server:
 
-## 🏗️ Architecture
-
-项目采用分层架构，将网络通信、协议解析、业务逻辑和数据访问进行解耦。
-
-```text
-                         Client
-                            │
-                       WebSocket
-                            │
-                            ▼
-                  ┌──────────────────┐
-                  │ WebSocket Adapter│
-                  └────────┬─────────┘
-                           │
-                           ▼
-                  ┌──────────────────┐
-                  │ Protocol Layer   │
-                  │ Decode / Encode  │
-                  └────────┬─────────┘
-                           │
-                           ▼
-                  ┌──────────────────┐
-                  │ Command Handler  │
-                  └────────┬─────────┘
-                           │
-                           ▼
-                  ┌──────────────────┐
-                  │ Application      │
-                  │ Services         │
-                  └────────┬─────────┘
-                           │
-            ┌──────────────┼──────────────┐
-            ▼              ▼              ▼
-        Security         Chat          Channel
-            │              │              │
-            └──────────────┼──────────────┘
-                           │
-                  ┌────────┴────────┐
-                  ▼                 ▼
-               Redis             MariaDB
+```java
+FPTServer.run("0.0.0.0", 25565);
 ```
 
-### Layer Responsibilities
+Client:
 
-#### Transport Layer
-
-负责 WebSocket 连接生命周期以及客户端连接管理。
-
-```text
-WebSocket
-    │
-    ├── Connect
-    ├── Authenticate
-    ├── Receive
-    ├── Send
-    └── Disconnect
+```java
+FPTClient.connect("localhost", 25565);
 ```
 
-该层不直接处理具体聊天业务。
+This starts a server and connects a client using the default protocol. Both sides use `Protocol.create()`, which has the identifier `"fpt"` and version `1`. The handshake succeeds automatically, and the connection is ready.
 
-#### Protocol Layer
+To do anything useful, you need to define messages and register them in a protocol.
 
-负责客户端与服务端之间的消息协议。
+## Messages
 
-```text
-Client Message
-       │
-       ▼
-   Decoder
-       │
-       ▼
-   Message
-       │
-       ▼
-   Handler
-```
+A message is a plain Java class that implements `C2SMessage` or `S2CMessage`:
 
-服务端消息同样经过协议编码后发送给客户端。
+```java
+import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
+import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
 
-#### Application Layer
+public class ChatMessage implements C2SMessage {
+    public String sender;
+    public String text;
+}
 
-负责具体业务流程，例如：
-
-* 发送消息
-* 加入频道
-* 离开频道
-* 用户管理
-* 封禁
-* 禁言
-* 权限检查
-
-Application Layer 不应该依赖具体的 WebSocket 实现。
-
-#### Domain Layer
-
-描述 IRC 系统中的核心业务对象，例如：
-
-```text
-User
-Channel
-Message
-Role
-Permission
-Ban
-Mute
-Session
-```
-
-#### Infrastructure Layer
-
-负责外部基础设施：
-
-```text
-MariaDB
-Redis
-WebSocket
-```
-
-业务逻辑尽量不直接依赖具体基础设施实现。
-
----
-
-# 📦 Protocol
-
-项目借鉴游戏网络协议的设计思路，将客户端和服务端之间的通信抽象为独立的 Message / Packet。
-
-```text
-protocol/
-├── client/
-│   ├── LoginMessage
-│   ├── ChatSendMessage
-│   ├── JoinChannelMessage
-│   └── LeaveChannelMessage
-│
-├── server/
-│   ├── LoginSuccessMessage
-│   ├── LoginFailureMessage
-│   ├── ChatMessage
-│   ├── SystemMessage
-│   └── ErrorMessage
-│
-├── codec/
-└── handler/
-```
-
-### Client → Server
-
-例如发送聊天消息：
-
-```json
-{
-  "type": "CHAT_SEND",
-  "requestId": "abc123",
-  "channel": "public",
-  "content": "Hello!"
+public class ChatBroadcast implements S2CMessage {
+    public String sender;
+    public String text;
 }
 ```
 
-### Server → Client
+Messages contain only data fields. You do not implement `encode()` or `decode()` — FPT generates codecs automatically via `AutoMessageCodec` using the field types and the protocol's codec map.
 
-服务器广播：
+Fields must have types supported by the protocol's codec map (see [Default Codecs](#default-codecs)). If a field type has no codec, registration throws `IllegalArgumentException`.
 
-```json
-{
-  "type": "CHAT_MESSAGE",
-  "messageId": 12345,
-  "channel": "public",
-  "sender": "Alice",
-  "content": "Hello!",
-  "timestamp": 1720000000
+## Protocol
+
+A `Protocol` describes a complete communication protocol:
+
+```text
+Protocol
+├── Identifier    (String)
+├── Version       (int)
+├── C2S Registry  (MessageRegistry)
+├── S2C Registry  (MessageRegistry)
+├── Codec Map     (Map<Class<?>, Codec<?>>)
+└── Fingerprint   (SHA-256)
+```
+
+### Creating a Protocol
+
+```java
+Protocol protocol = Protocol.create();
+// identifier = "fpt", version = 1
+
+Protocol protocol = Protocol.create("myapp", 2);
+// identifier = "myapp", version = 2
+```
+
+### Registering Messages
+
+C2S and S2C messages are registered independently:
+
+```java
+Protocol protocol = Protocol.create()
+        .registerC2S(ChatMessage.class)
+        .registerS2C(ChatBroadcast.class);
+```
+
+You can register multiple messages at once:
+
+```java
+Protocol protocol = Protocol.create()
+        .registerC2S(LoginMessage.class, ChatMessage.class)
+        .registerS2C(LoginResponse.class, ChatBroadcast.class);
+```
+
+### Immutability
+
+Protocol registration creates a new `Protocol` rather than modifying the existing one:
+
+```java
+Protocol base = Protocol.create();
+
+Protocol a = base.registerC2S(ChatMessage.class);
+Protocol b = base.registerC2S(LoginMessage.class);
+```
+
+```text
+base  → no ChatMessage, no LoginMessage
+a     → ChatMessage
+b     → LoginMessage
+```
+
+Each registration returns a new independent protocol. `base` is never modified.
+
+## Server and Client
+
+### Server
+
+```java
+FPTServer server = FPTServer.run("0.0.0.0", 25565);
+```
+
+With a custom protocol:
+
+```java
+Protocol protocol = Protocol.create()
+        .registerC2S(ChatMessage.class)
+        .registerS2C(ChatBroadcast.class);
+
+FPTServer server = FPTServer.run("0.0.0.0", 25565, protocol);
+```
+
+With full control over event group and message listener:
+
+```java
+EventGroup eventGroup = EventGroup.nio();
+MessageListener listener = new MessageListener() {
+    @Override
+    public void onConnectionActive(Channel channel) { }
+
+    @Override
+    public void onConnectionInactive(Channel channel) { }
+
+    @Override
+    public void onMessage(Message message, Channel channel) { }
+};
+
+FPTServer server = FPTServer.run("0.0.0.0", 25565, protocol, eventGroup, listener);
+```
+
+Server API:
+
+| Method | Description |
+|---|---|
+| `server.isRunning()` | Whether the server is running |
+| `server.getPort()` | Actual bound port (useful with port 0) |
+| `server.stop()` | Stop the server |
+
+### Client
+
+```java
+FPTClient client = FPTClient.connect("localhost", 25565);
+```
+
+With a custom protocol:
+
+```java
+FPTClient client = FPTClient.connect("localhost", 25565, protocol);
+```
+
+With full control:
+
+```java
+FPTClient client = FPTClient.connect("localhost", 25565, protocol, eventGroup, listener);
+```
+
+Client API:
+
+| Method | Description |
+|---|---|
+| `client.isConnected()` | Whether the client is connected |
+| `client.send(message)` | Send a message to the server |
+| `client.disconnect()` | Disconnect from the server |
+
+The client and server must use the same protocol definition. The handshake verifies this automatically (see [Handshake](#handshake)).
+
+## Codec
+
+A `Codec<T>` encodes and decodes a Java type to/from a binary wire format:
+
+```java
+public abstract class Codec<T> {
+    public abstract void encode(ByteBuffer buf, T value) throws EncodeException;
+    public abstract T decode(ByteBuffer buf) throws DecodeException;
 }
 ```
 
-### Error
+A codec handles one Java type. A protocol's codec map determines which codec is used for each type. Codec is separate from Protocol — the same codec can be used across different protocols, and different protocols can assign different codecs to the same type.
 
-请求失败时，可以通过 `requestId` 将错误与原始请求关联：
+### Default Codecs
 
-```json
-{
-  "type": "ERROR",
-  "requestId": "abc123",
-  "code": "MUTED",
-  "message": "You are currently muted."
+The default codec map (`Codec.DEFAULT_CODEC`) provides:
+
+| Java Type | Codec | Wire Format |
+|---|---|---|
+| `boolean` / `Boolean` | `fpt:boolean` | 1 byte (0 or 1) |
+| `byte` / `Byte` | `fpt:byte` | 1 byte fixed |
+| `short` / `Short` | `fpt:short` | 2 bytes fixed (big-endian) |
+| `int` / `Integer` | `fpt:int:varint32` | VarInt + ZigZag (variable-length) |
+| `long` / `Long` | `fpt:long:varlong64` | VarLong + ZigZag (variable-length) |
+| `float` / `Float` | `fpt:float` | 4 bytes fixed (IEEE 754) |
+| `double` / `Double` | `fpt:double` | 8 bytes fixed (IEEE 754) |
+| `char` / `Character` | `fpt:char` | 2 bytes fixed (big-endian) |
+| `String` | `fpt:string:utf8` | VarInt length + UTF-8 bytes (max 32768) |
+| `UUID` | `fpt:uuid:128` | 128-bit (two 8-byte longs) |
+| `byte[]` | `fpt:bytes` | VarInt length + raw bytes (max 32768) |
+
+### VarInt and VarLong
+
+`VarInt` and `VarLong` use variable-length encoding with ZigZag for signed integers:
+
+| Value | ZigZag | Encoded bytes |
+|---|---|---|
+| `0` | `0` | `0x00` |
+| `-1` | `1` | `0x01` |
+| `1` | `2` | `0x02` |
+| `-2` | `3` | `0x03` |
+| `2` | `4` | `0x04` |
+
+Small absolute values produce fewer bytes. ZigZag maps signed integers to unsigned so that small negative values also encode compactly.
+
+`VarInt` handles 32-bit integers (`int` / `Integer`). `VarLong` handles 64-bit integers (`long` / `Long`).
+
+### Fixed32Codec
+
+`Fixed32Codec.INSTANCE` provides a fixed 4-byte big-endian encoding for `Integer`, as an alternative to the default VarInt codec. Use it when you prefer predictable size over compactness.
+
+### Codec Override
+
+To customize the codec for a type, create a new codec map and pass it to the protocol:
+
+```java
+import io.github.floatingpointmc.fpt.codec.Fixed32Codec;
+
+Protocol base = Protocol.create();
+
+Map<Class<?>, Codec<?>> customCodecs = new HashMap<>(base.codec());
+customCodecs.put(Integer.class, Fixed32Codec.INSTANCE);
+
+Protocol fixed32Protocol = base.codec(customCodecs);
+```
+
+Since codec configuration belongs to the protocol, different protocols can use different codecs for the same type:
+
+```text
+Protocol A  →  Integer uses VarInt
+Protocol B  →  Integer uses Fixed32
+```
+
+## AutoMessageCodec
+
+When you register a message, FPT automatically generates a `MessageCodec` for it using `AutoMessageCodec`:
+
+```text
+Message class
+      ↓
+AutoMessageCodec.create(messageClass, codecMap)
+      ↓
+ReflectionMessageCodec
+      ↓
+Each field → Codec from codecMap
+```
+
+You define messages as plain data classes. FPT derives the encoding and decoding from the field types and the protocol's codec map. You never write `encode()` or `decode()` for a message.
+
+If you change the protocol's codec map (e.g., override `Integer` with `Fixed32Codec`), all messages registered after that change will use the new codec for `int` fields.
+
+## Fingerprint
+
+Every protocol has a deterministic fingerprint derived from its definition using SHA-256:
+
+```text
+Fingerprint = SHA-256(
+    identifier,
+    version,
+    C2S registry (type names + assigned IDs, in registration order),
+    S2C registry (type names + assigned IDs, in registration order),
+    codec map (type → codec identity, sorted)
+)
+```
+
+**Message registration order is part of the protocol definition.** Different registration orders produce different fingerprints:
+
+```java
+Protocol ab = Protocol.create()
+        .registerC2S(A.class)
+        .registerC2S(B.class);
+
+Protocol ba = Protocol.create()
+        .registerC2S(B.class)
+        .registerC2S(A.class);
+
+// ab.getFingerprint() ≠ ba.getFingerprint()
+```
+
+Fingerprints are used during handshake to verify that both sides use the same protocol definition.
+
+## Handshake
+
+When a client connects, FPT performs a protocol handshake before any application messages are exchanged:
+
+```text
+TCP connection established
+        ↓
+Client sends HandshakeMessage
+  (identifier, version, fingerprint)
+        ↓
+Server verifies against its own protocol
+        ↓
+  Match → Server sends HandshakeMessage back
+          → Connection enters normal message exchange
+        ↓
+  Mismatch → Server closes connection
+```
+
+If the identifier, version, or fingerprint do not match, the connection is rejected. Normal message exchange starts only after the handshake succeeds.
+
+The handshake timeout on the client side is 10 seconds.
+
+## Transport
+
+```text
+FPT API (Protocol, FPTClient, FPTServer)
+              ↓
+     Transport abstraction
+     (EventGroup, MessageListener)
+              ↓
+     Netty implementation
+     (fpt-transport-netty)
+```
+
+The default transport uses Netty with NIO. The pipeline per connection is:
+
+```text
+FrameDecoder  →  HandshakeHandler  →  MessageDecoder / MessageEncoder  →  ChannelHandler
+```
+
+Users normally do not need to interact directly with Netty's `Channel`, `Pipeline`, `ByteBuf`, or `EventLoop`. FPT manages these internally.
+
+## EventGroup
+
+`EventGroup` controls the Netty `EventLoopGroup` used for I/O:
+
+```java
+EventGroup group = EventGroup.nio();
+```
+
+To wrap existing Netty event loop groups:
+
+```java
+EventGroup group = EventGroup.wrap(bossGroup, workerGroup);
+```
+
+When you use the `EventGroup.nio()` or `EventGroup.wrap()` factory, you are responsible for closing the group. When you use the simplified `FPTServer.run(host, port)` or `FPTClient.connect(host, port)` APIs, FPT creates and owns the event group.
+
+EventGroup is runtime configuration, not part of the protocol definition.
+
+## MessageListener
+
+`MessageListener` receives connection lifecycle events and incoming messages:
+
+```java
+public interface MessageListener {
+    void onConnectionActive(Channel channel);
+    void onConnectionInactive(Channel channel);
+    void onMessage(Message message, Channel channel);
 }
 ```
 
-这种设计可以使协议层独立于具体业务实现，并方便未来增加新的客户端。
+Use `MessageListener.empty()` for a no-op listener.
 
----
-
-# 👤 User & Session
-
-项目将用户和网络连接分离。
+## Module Structure
 
 ```text
-User
- │
- ├── Session
- ├── Session
- └── Session
+fpt/
+├── fpt-common/           Protocol, Message, Codec, Fingerprint, MessageRegistry
+├── fpt-client/            FPTClient
+├── fpt-server/            FPTServer
+└── fpt-transport-netty/   Netty transport, EventGroup, MessageListener
 ```
 
-同一个用户可以同时拥有多个 WebSocket 连接，例如：
+| Module | Depends on | Purpose |
+|---|---|---|
+| `fpt-common` | — | Core protocol and codec definitions |
+| `fpt-transport-netty` | `fpt-common` | Netty-based transport implementation |
+| `fpt-client` | `fpt-common`, `fpt-transport-netty` | Client API |
+| `fpt-server` | `fpt-common`, `fpt-transport-netty` | Server API |
+
+Architecture overview:
 
 ```text
-Alice
- ├── Browser
- ├── Desktop Client
- └── Mobile Client
+                Protocol
+                   │
+        ┌──────────┴──────────┐
+        │                     │
+     Client                 Server
+        │                     │
+        └──────────┬──────────┘
+                   │
+               Transport
+                   │
+                 Netty
 ```
 
-`User` 表示业务层用户，而 `Session` 表示一次具体的网络连接。
+Protocol does not depend on Netty.
 
-这也便于使用 Redis 管理在线状态和 Session 映射。
+## Installation
 
----
+FPT is published to Maven Central.
 
-# 💬 Channel
+Gradle:
 
-Channel 是 IRC 的核心领域对象。
-
-```text
-Channel
-├── name
-├── members
-└── messages
+```groovy
+implementation 'io.github.floatingpointmc:fpt-common:0.1.0'
+implementation 'io.github.floatingpointmc:fpt-client:0.1.0'
+implementation 'io.github.floatingpointmc:fpt-server:0.1.0'
 ```
 
-例如：
+Maven:
 
-```text
-#general
-#java
-#gaming
-#offtopic
+```xml
+<dependency>
+    <groupId>io.github.floatingpointmc</groupId>
+    <artifactId>fpt-common</artifactId>
+    <version>0.1.0</version>
+</dependency>
+<dependency>
+    <groupId>io.github.floatingpointmc</groupId>
+    <artifactId>fpt-client</artifactId>
+    <version>0.1.0</version>
+</dependency>
+<dependency>
+    <groupId>io.github.floatingpointmc</groupId>
+    <artifactId>fpt-server</artifactId>
+    <version>0.1.0</version>
+</dependency>
 ```
 
-用户通过加入 Channel 接收其中的消息。
+You typically need `fpt-common` and either `fpt-client` or `fpt-server` (both of which transitively include `fpt-transport-netty`).
 
-```text
-User
- │
- └── ChannelMember
-          │
-          ▼
-       Channel
-```
-
-未来可以进一步支持：
-
-* Channel Owner
-* Channel Moderator
-* Channel-specific permissions
-* Private Channel
-* Channel password
-* Channel invite
-
----
-
-# 🔐 Authentication & RBAC
-
-项目使用认证机制识别用户身份，并使用 RBAC 控制系统级权限。
-
-基本关系：
-
-```text
-User
- │
- └── Role
-      │
-      └── Permission
-```
-
-例如：
-
-| Role      | Permission       |
-| --------- | ---------------- |
-| USER      | 发送消息、加入频道、查看历史消息 |
-| MODERATOR | 禁言、解除禁言          |
-| ADMIN     | 用户管理、封禁、解封、权限管理  |
-
-权限检查发生在服务端。
-
-```text
-Client Request
-      │
-      ▼
-Authentication
-      │
-      ▼
-Authorization / RBAC
-      │
-      ▼
-Business Logic
-```
-
-客户端不能通过修改消息内容绕过服务端权限检查。
-
----
-
-# 🚫 Moderation
-
-## Ban
-
-封禁记录不会简单地作为 `User.banned = true` 存储，而是作为独立的业务记录。
-
-```text
-Ban
-├── userId
-├── operatorId
-├── reason
-├── createdAt
-└── expiresAt
-```
-
-这样可以记录：
-
-* 谁执行了封禁
-* 封禁原因
-* 封禁开始时间
-* 封禁结束时间
-
-## Mute
-
-禁言与封禁类似：
-
-```text
-Mute
-├── userId
-├── operatorId
-├── reason
-├── createdAt
-└── expiresAt
-```
-
-被禁言用户仍然可以查看聊天内容，但无法发送消息。
-
----
-
-# 💾 Data Storage
-
-## MariaDB
-
-MariaDB 用于保存核心持久化数据：
-
-* 用户
-* 角色
-* 权限
-* 用户角色关系
-* 角色权限关系
-* Channel
-* Channel Member
-* 聊天记录
-* Ban
-* Mute
-
-建议数据库统一使用：
-
-```sql
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci
-```
-
-这样可以正确存储 Unicode 文本以及 Emoji，并使普通文本比较保持大小写不敏感。
-
-例如用户名：
-
-```text
-Alice
-alice
-ALICE
-```
-
-可以在数据库唯一约束下视为同一个用户名。
-
-## Redis
-
-Redis 用于保存实时性较高的数据，例如：
-
-* 在线用户
-* WebSocket Session
-* 用户状态
-* Ban / Mute 缓存
-* 高频访问数据
-* 临时数据
-
-Redis 不作为核心业务数据的唯一持久化来源。
-
----
-
-# 📨 Message Flow
-
-普通聊天消息的处理流程：
-
-```text
-Client
-  │
-  │ WebSocket
-  ▼
-WebSocket Adapter
-  │
-  ▼
-Protocol Decoder
-  │
-  ▼
-Chat Message Handler
-  │
-  ▼
-Authentication
-  │
-  ▼
-Authorization / RBAC
-  │
-  ▼
-Mute Check
-  │
-  ▼
-Chat Service
-  │
-  ├───────────────┐
-  ▼               ▼
-MariaDB          Channel
-  │               │
-  │               ▼
-  │          Online Sessions
-  │               │
-  └───────────────┴──> WebSocket
-                         │
-                         ▼
-                       Clients
-```
-
----
-
-# 🗂️ Project Structure
-
-```text
-src/
-└── main/
-    ├── java/
-    │   └── com/example/irc/
-    │       │
-    │       ├── application/
-    │       │   ├── chat/
-    │       │   ├── channel/
-    │       │   ├── user/
-    │       │   └── moderation/
-    │       │
-    │       ├── domain/
-    │       │   ├── user/
-    │       │   ├── channel/
-    │       │   ├── message/
-    │       │   └── moderation/
-    │       │
-    │       ├── protocol/
-    │       │   ├── client/
-    │       │   ├── server/
-    │       │   ├── codec/
-    │       │   └── handler/
-    │       │
-    │       ├── infrastructure/
-    │       │   ├── websocket/
-    │       │   ├── redis/
-    │       │   └── mariadb/
-    │       │
-    │       ├── security/
-    │       │   ├── authentication/
-    │       │   └── authorization/
-    │       │
-    │       └── config/
-    │
-    └── resources/
-        ├── application.yml
-        └── ...
-```
-
----
-
-# 🚀 Getting Started
-
-## Requirements
-
-* Java
-* Spring Boot
-* MariaDB
-* Redis
-* Git
-
-## Clone
+## Build from Source
 
 ```bash
-git clone https://github.com/your-name/your-repository.git
-cd your-repository
+./gradlew build
 ```
 
-## Database
+Windows:
 
-创建 MariaDB 数据库：
-
-```sql
-CREATE DATABASE irc
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
+```powershell
+gradlew.bat build
 ```
 
-然后配置数据库连接：
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:mariadb://localhost:3306/irc
-    username: your_username
-    password: your_password
-```
-
-## Redis
-
-启动 Redis：
+Run tests:
 
 ```bash
-redis-server
+./gradlew test
 ```
 
-并在 Spring Boot 配置中设置 Redis 连接。
-
-## Run
-
-使用 Maven：
+Publish to local Maven repository:
 
 ```bash
-./mvnw spring-boot:run
+./gradlew publishToMavenLocal
 ```
 
-或者：
+## Java Version
 
-```bash
-./mvnw test
-```
+FPT targets Java 8 compatibility. The library compiles and runs on Java 8 and above.
 
-具体启动参数以项目当前版本配置为准。
+The Gradle build uses a JDK 25 JVM with a Java 8 toolchain, so the build environment requires JDK 25 but the produced artifacts are Java 8 compatible.
 
----
+## Project Status
 
-# 🧪 Testing
+Status: Early Development
 
-计划覆盖：
+Version 0.1.0. The API may change.
 
-* Authentication
-* RBAC
-* WebSocket Connection
-* Protocol Encoding / Decoding
-* Chat Service
-* Channel Management
-* Ban / Unban
-* Mute / Unmute
-* Redis
-* MariaDB
-* WebSocket Integration Test
-* Concurrent Connection Test
+## License
 
----
+LGPL-3.0 — see [LICENSE](LICENSE).
 
-# 🛣️ Roadmap
+## Contributing
 
-* [x] Spring Boot 基础框架
-* [x] WebSocket 基础通信
-* [ ] Protocol / Message 系统
-* [ ] 用户认证
-* [ ] RBAC
-* [ ] 公共 Channel
-* [ ] 聊天记录
-* [ ] Redis Session
-* [ ] Ban / Unban
-* [ ] Mute / Unmute
-* [ ] 多 Channel
-* [ ] 私聊
-* [ ] Channel Permission
-* [ ] WebSocket 心跳
-* [ ] 自动重连
-* [ ] 消息分页
-* [ ] 消息撤回
-* [ ] 管理后台
-* [ ] Docker / Docker Compose
-* [ ] API Documentation
-* [ ] 性能测试
-* [ ] 并发测试
-
----
-
-# 🎯 Project Goals
-
-本项目不仅实现一个聊天服务器，同时用于实践以下后端开发能力：
-
-* Java / Spring Boot
-* WebSocket 实时通信
-* 网络消息协议设计
-* 分层架构
-* RBAC 权限模型
-* Authentication / Authorization
-* Redis 缓存与 Session 管理
-* MariaDB 数据建模
-* 实时消息广播
-* 并发连接管理
-* WebSocket 生命周期管理
-* 单元测试与集成测试
-* Docker 化部署
-
----
-
-# 🤝 Contributing
-
-欢迎提交 Issue、Pull Request 或改进建议。
-
-提交代码时建议：
-
-* 保持现有项目结构
-* 为核心业务逻辑添加测试
-* 不提交数据库密码、Redis 密码等敏感信息
-* 权限相关修改应添加对应测试
-* 协议修改应同步更新文档
-
----
-
-# 📄 License
-
-本项目采用 **BSD 3-Clause License**。
-
-SPDX Identifier:
-
-```text
-BSD-3-Clause
-```
-
-完整许可证文本请见 [`LICENSE`](LICENSE)。
-
----
-
-## ⭐ About
-
-这是一个面向学习、实践以及后端开发能力展示的开源 IRC 项目。
-
-项目重点关注：
-
-```text
-Real-time Communication
-        +
-Protocol Design
-        +
-Security
-        +
-Data Persistence
-        +
-Caching
-        +
-Scalable Architecture
-```
-
-欢迎 Star ⭐
+Contributions are welcome. The project is at <https://github.com/floatingpointmc/fpt>.
