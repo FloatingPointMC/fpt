@@ -1,7 +1,7 @@
 package io.github.floatingpointmc.fpt.protocol;
 
-import io.github.floatingpointmc.fpt.codec.DecodeException;
-import io.github.floatingpointmc.fpt.codec.EncodeException;
+import io.github.floatingpointmc.fpt.codec.exceptions.DecodeException;
+import io.github.floatingpointmc.fpt.codec.exceptions.EncodeException;
 import io.github.floatingpointmc.fpt.codec.VarInt;
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
@@ -36,6 +36,6 @@ public final class HandshakeCodec {
     }
 
     public static @NotNull HandshakeMessage fromProtocol(@NotNull Protocol protocol) {
-        return new HandshakeMessage(protocol.identifier(), protocol.version(), protocol.fingerprint());
+        return new HandshakeMessage(protocol.getIdentifier(), protocol.getVersion(), protocol.getFingerprint());
     }
 }

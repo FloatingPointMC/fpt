@@ -3,19 +3,23 @@ package io.github.floatingpointmc.fpt.protocol;
 import io.github.floatingpointmc.fpt.codec.AutoMessageCodec;
 import io.github.floatingpointmc.fpt.codec.Codec;
 import io.github.floatingpointmc.fpt.codec.MessageCodec;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
+import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
+import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
+import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
 
+@Getter
 public final class Protocol {
-
+    public static final Protocol DEFAULT_PROTOCOL = create();
     public static final String DEFAULT_IDENTIFIER = "fpt";
     public static final int DEFAULT_VERSION = 1;
-
     private final @NotNull String identifier;
     private final int version;
     private final @NotNull MessageRegistry c2sRegistry;
@@ -56,22 +60,56 @@ public final class Protocol {
                 Collections.emptyMap());
     }
 
-    public @NotNull Protocol register(@NotNull Class<? extends C2SMessage> messageType) {
-        MessageCodec<?> msgCodec = AutoMessageCodec.create(messageType, codecMap);
-        MessageRegistry newC2s = c2sRegistry.register(messageType);
-        Map<Class<?>, MessageCodec<?>> newC2sCodecs = new HashMap<>(c2sCodecs);
-        newC2sCodecs.put(messageType, msgCodec);
-        return new Protocol(identifier, version, newC2s, s2cRegistry, codecMap,
-                Collections.unmodifiableMap(newC2sCodecs), s2cCodecs);
+    public @NotNull Protocol registerC2S(@NotNull Class<? extends C2SMessage> messageType) {
+        return register(
+                messageType,
+                c2sRegistry,
+                c2sCodecs,
+                (registry, codecs) -> new Protocol(
+                        identifier,
+                        version,
+                        registry,
+                        s2cRegistry,
+                        codecMap,
+                        codecs,
+                        s2cCodecs
+                )
+        );
     }
 
     public @NotNull Protocol registerS2C(@NotNull Class<? extends S2CMessage> messageType) {
+        return register(
+                messageType,
+                s2cRegistry,
+                s2cCodecs,
+                (registry, codecs) -> new Protocol(
+                        identifier,
+                        version,
+                        c2sRegistry,
+                        registry,
+                        codecMap,
+                        c2sCodecs,
+                        codecs
+                )
+        );
+    }
+
+    private @NotNull Protocol register(
+            @NotNull Class<? extends Message> messageType,
+            @NotNull MessageRegistry registry,
+            @NotNull Map<Class<?>, MessageCodec<?>> codecs,
+            @NotNull BiFunction<MessageRegistry, Map<Class<?>, MessageCodec<?>>, Protocol> factory
+    ) {
         MessageCodec<?> msgCodec = AutoMessageCodec.create(messageType, codecMap);
-        MessageRegistry newS2c = s2cRegistry.register(messageType);
-        Map<Class<?>, MessageCodec<?>> newS2cCodecs = new HashMap<>(s2cCodecs);
-        newS2cCodecs.put(messageType, msgCodec);
-        return new Protocol(identifier, version, c2sRegistry, newS2c, codecMap,
-                c2sCodecs, Collections.unmodifiableMap(newS2cCodecs));
+        MessageRegistry newRegistry = registry.register(messageType);
+
+        Map<Class<?>, MessageCodec<?>> newCodecs = new HashMap<>(codecs);
+        newCodecs.put(messageType, msgCodec);
+
+        return factory.apply(
+                newRegistry,
+                Collections.unmodifiableMap(newCodecs)
+        );
     }
 
     public @NotNull Map<Class<?>, Codec<?>> codec() {
@@ -79,47 +117,23 @@ public final class Protocol {
     }
 
     public @NotNull Protocol codec(@NotNull Map<Class<?>, Codec<?>> newCodecMap) {
-        Map<Class<?>, Codec<?>> snapshot = new LinkedHashMap<>();
-        for (Map.Entry<Class<?>, Codec<?>> entry : newCodecMap.entrySet()) {
-            snapshot.put(entry.getKey(), entry.getValue());
-        }
-        Map<Class<?>, Codec<?>> immutable = Collections.unmodifiableMap(snapshot);
+        Map<Class<?>, Codec<?>> immutable = Collections.unmodifiableMap(newCodecMap);
 
-        Map<Class<?>, MessageCodec<?>> newC2sCodecs = new HashMap<>();
-        for (MessageRegistry.Entry entry : c2sRegistry.entries()) {
-            MessageCodec<?> msgCodec = AutoMessageCodec.create(entry.messageType(), immutable);
-            newC2sCodecs.put(entry.messageType(), msgCodec);
-        }
-
-        Map<Class<?>, MessageCodec<?>> newS2cCodecs = new HashMap<>();
-        for (MessageRegistry.Entry entry : s2cRegistry.entries()) {
-            MessageCodec<?> msgCodec = AutoMessageCodec.create(entry.messageType(), immutable);
-            newS2cCodecs.put(entry.messageType(), msgCodec);
-        }
+        Map<Class<?>, MessageCodec<?>> newC2sCodecs = applyNewCodec(immutable, c2sRegistry);
+        Map<Class<?>, MessageCodec<?>> newS2cCodecs = applyNewCodec(immutable, s2cRegistry);
 
         return new Protocol(identifier, version, c2sRegistry, s2cRegistry, immutable,
                 Collections.unmodifiableMap(newC2sCodecs),
                 Collections.unmodifiableMap(newS2cCodecs));
     }
 
-    public @NotNull String identifier() {
-        return identifier;
-    }
-
-    public int version() {
-        return version;
-    }
-
-    public @NotNull MessageRegistry c2sRegistry() {
-        return c2sRegistry;
-    }
-
-    public @NotNull MessageRegistry s2cRegistry() {
-        return s2cRegistry;
-    }
-
-    public @NotNull Fingerprint fingerprint() {
-        return fingerprint;
+    private static Map<Class<?>, MessageCodec<?>> applyNewCodec(Map<Class<?>, Codec<?>> immutable, MessageRegistry c2sRegistry) {
+        Map<Class<?>, MessageCodec<?>> newC2sCodecs = new HashMap<>();
+        for (MessageRegistry.Entry entry : c2sRegistry.entries()) {
+            MessageCodec<?> msgCodec = AutoMessageCodec.create(entry.messageType(), immutable);
+            newC2sCodecs.put(entry.messageType(), msgCodec);
+        }
+        return newC2sCodecs;
     }
 
     @SuppressWarnings("unchecked")
@@ -136,7 +150,7 @@ public final class Protocol {
     }
 
     public @Nullable MessageCodec<?> getMessageCodec(int messageId, @NotNull MessageDirection direction) {
-        if (direction == MessageDirection.C2S) {
+        if (MessageDirection.C2S.equals(direction)) {
             Class<? extends Message> type = c2sRegistry.getMessageType(messageId);
             if (type != null) {
                 return c2sCodecs.get(type);
@@ -159,6 +173,4 @@ public final class Protocol {
         }
         throw new IllegalArgumentException("Message type not C2S or S2C: " + messageType.getName());
     }
-
-    public static final Protocol DEFAULT_PROTOCOL = create();
 }

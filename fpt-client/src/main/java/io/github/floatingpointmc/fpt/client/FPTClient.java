@@ -1,6 +1,6 @@
 package io.github.floatingpointmc.fpt.client;
 
-import io.github.floatingpointmc.fpt.protocol.Message;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
 import io.github.floatingpointmc.fpt.transport.MessageListener;

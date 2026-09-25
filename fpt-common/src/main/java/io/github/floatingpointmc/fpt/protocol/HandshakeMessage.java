@@ -27,8 +27,8 @@ public final class HandshakeMessage {
     }
 
     public boolean matches(@NotNull Protocol protocol) {
-        return this.identifier.equals(protocol.identifier())
-                && this.version == protocol.version()
-                && this.fingerprint.equals(protocol.fingerprint());
+        return this.identifier.equals(protocol.getIdentifier())
+                && this.version == protocol.getVersion()
+                && this.fingerprint.equals(protocol.getFingerprint());
     }
 }

@@ -1,6 +1,6 @@
 package io.github.floatingpointmc.fpt.transport;
 
-import io.github.floatingpointmc.fpt.protocol.Message;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.netty.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 

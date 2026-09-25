@@ -1,9 +1,7 @@
 package io.github.floatingpointmc.fpt.codec;
 
-import io.github.floatingpointmc.fpt.protocol.C2SMessage;
-import io.github.floatingpointmc.fpt.protocol.Message;
+import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
-import io.github.floatingpointmc.fpt.protocol.S2CMessage;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -31,7 +29,7 @@ class AutoMessageCodecTest {
 
     @Test
     void automaticMessageCodec() throws Exception {
-        Protocol protocol = Protocol.create().register(TestMessage.class);
+        Protocol protocol = Protocol.create().registerC2S(TestMessage.class);
         MessageCodec<TestMessage> codec = protocol.getMessageCodec(TestMessage.class);
 
         TestMessage msg = new TestMessage();
@@ -51,11 +49,11 @@ class AutoMessageCodecTest {
 
     @Test
     void automaticCodecUsesCurrentProtocolCodecMap() throws Exception {
-        Protocol varIntProtocol = Protocol.create().register(SimpleMessage.class);
+        Protocol varIntProtocol = Protocol.create().registerC2S(SimpleMessage.class);
 
         Map<Class<?>, Codec<?>> fixedMap = new HashMap<Class<?>, Codec<?>>(Protocol.DEFAULT_PROTOCOL.codec());
         fixedMap.put(Integer.class, Fixed32Codec.INSTANCE);
-        Protocol fixed32Protocol = Protocol.DEFAULT_PROTOCOL.codec(fixedMap).register(SimpleMessage.class);
+        Protocol fixed32Protocol = Protocol.DEFAULT_PROTOCOL.codec(fixedMap).registerC2S(SimpleMessage.class);
 
         SimpleMessage msg = new SimpleMessage();
         msg.value = 42;
@@ -84,18 +82,18 @@ class AutoMessageCodecTest {
     @Test
     void unsupportedFieldEarlyFailure() {
         assertThrows(IllegalArgumentException.class, () -> {
-            Protocol.create().register(BadMessage.class);
+            Protocol.create().registerC2S(BadMessage.class);
         });
     }
 
     @Test
     void codecOverrideDoesNotAffectDefaultProtocol() throws Exception {
-        Protocol varIntDefault = Protocol.create().register(SimpleMessage.class);
+        Protocol varIntDefault = Protocol.create().registerC2S(SimpleMessage.class);
 
         Map<Class<?>, Codec<?>> fixedMap = new HashMap<Class<?>, Codec<?>>(Protocol.DEFAULT_PROTOCOL.codec());
         fixedMap.put(Integer.class, Fixed32Codec.INSTANCE);
         Protocol customBase = Protocol.DEFAULT_PROTOCOL.codec(fixedMap);
-        Protocol fixed32Custom = customBase.register(SimpleMessage.class);
+        Protocol fixed32Custom = customBase.registerC2S(SimpleMessage.class);
 
         SimpleMessage msg = new SimpleMessage();
         msg.value = 100;

@@ -2,6 +2,8 @@ package io.github.floatingpointmc.fpt.protocol;
 
 import io.github.floatingpointmc.fpt.codec.Codec;
 import io.github.floatingpointmc.fpt.codec.Fixed32Codec;
+import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
+import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -26,27 +28,27 @@ class FingerprintTest {
     @Test
     void fingerprintDeterminism() {
         Protocol a = Protocol.create()
-                .register(MessageA.class)
-                .register(MessageB.class);
+                .registerC2S(MessageA.class)
+                .registerC2S(MessageB.class);
 
         Protocol b = Protocol.create()
-                .register(MessageA.class)
-                .register(MessageB.class);
+                .registerC2S(MessageA.class)
+                .registerC2S(MessageB.class);
 
-        assertEquals(a.fingerprint(), b.fingerprint());
+        assertEquals(a.getFingerprint(), b.getFingerprint());
     }
 
     @Test
     void fingerprintRegistrationOrderSensitivity() {
         Protocol ab = Protocol.create()
-                .register(MessageA.class)
-                .register(MessageB.class);
+                .registerC2S(MessageA.class)
+                .registerC2S(MessageB.class);
 
         Protocol ba = Protocol.create()
-                .register(MessageB.class)
-                .register(MessageA.class);
+                .registerC2S(MessageB.class)
+                .registerC2S(MessageA.class);
 
-        assertNotEquals(ab.fingerprint(), ba.fingerprint(),
+        assertNotEquals(ab.getFingerprint(), ba.getFingerprint(),
                 "register(A).register(B) must differ from register(B).register(A)");
     }
 
@@ -54,14 +56,14 @@ class FingerprintTest {
     void fingerprintIdentifierSensitivity() {
         Protocol a = Protocol.create("app1", 1);
         Protocol b = Protocol.create("app2", 1);
-        assertNotEquals(a.fingerprint(), b.fingerprint());
+        assertNotEquals(a.getFingerprint(), b.getFingerprint());
     }
 
     @Test
     void fingerprintVersionSensitivity() {
         Protocol a = Protocol.create("app", 1);
         Protocol b = Protocol.create("app", 2);
-        assertNotEquals(a.fingerprint(), b.fingerprint());
+        assertNotEquals(a.getFingerprint(), b.getFingerprint());
     }
 
     @Test
@@ -73,38 +75,38 @@ class FingerprintTest {
         Protocol varInt = base;
         Protocol fixed32 = base.codec(customMap);
 
-        assertNotEquals(varInt.fingerprint(), fixed32.fingerprint(),
+        assertNotEquals(varInt.getFingerprint(), fixed32.getFingerprint(),
                 "Different Integer codec must produce different fingerprint");
     }
 
     @Test
     void fingerprintMessageDifference() {
-        Protocol withA = Protocol.create().register(MessageA.class);
-        Protocol withB = Protocol.create().register(MessageB.class);
-        assertNotEquals(withA.fingerprint(), withB.fingerprint());
+        Protocol withA = Protocol.create().registerC2S(MessageA.class);
+        Protocol withB = Protocol.create().registerC2S(MessageB.class);
+        assertNotEquals(withA.getFingerprint(), withB.getFingerprint());
     }
 
     @Test
     void fingerprintS2CDifference() {
         Protocol withC = Protocol.create().registerS2C(MessageC.class);
         Protocol empty = Protocol.create();
-        assertNotEquals(withC.fingerprint(), empty.fingerprint());
+        assertNotEquals(withC.getFingerprint(), empty.getFingerprint());
     }
 
     @Test
     void fingerprintHexIsStable() {
-        Protocol p = Protocol.create().register(MessageA.class);
-        String hex1 = p.fingerprint().hex();
-        String hex2 = p.fingerprint().hex();
+        Protocol p = Protocol.create().registerC2S(MessageA.class);
+        String hex1 = p.getFingerprint().hex();
+        String hex2 = p.getFingerprint().hex();
         assertEquals(hex1, hex2);
         assertTrue(hex1.length() > 0);
     }
 
     @Test
     void fingerprintBytesAreDefensiveCopy() {
-        Protocol p = Protocol.create().register(MessageA.class);
-        byte[] bytes1 = p.fingerprint().bytes();
-        byte[] bytes2 = p.fingerprint().bytes();
+        Protocol p = Protocol.create().registerC2S(MessageA.class);
+        byte[] bytes1 = p.getFingerprint().bytes();
+        byte[] bytes2 = p.getFingerprint().bytes();
         assertArrayEquals(bytes1, bytes2);
         bytes1[0] = (byte) ~bytes1[0];
         assertNotEquals(bytes1[0], bytes2[0]);

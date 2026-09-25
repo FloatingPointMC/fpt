@@ -1,5 +1,6 @@
 package io.github.floatingpointmc.fpt.protocol;
 
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -8,7 +9,6 @@ import java.util.Collections;
 import java.util.List;
 
 public final class MessageRegistry {
-
     private final List<Entry> entries;
 
     MessageRegistry() {

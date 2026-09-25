@@ -1,6 +1,8 @@
 package io.github.floatingpointmc.fpt.codec;
 
-import io.github.floatingpointmc.fpt.protocol.Message;
+import io.github.floatingpointmc.fpt.codec.exceptions.DecodeException;
+import io.github.floatingpointmc.fpt.codec.exceptions.EncodeException;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.protocol.MessageDirection;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
 import io.github.floatingpointmc.fpt.protocol.ProtocolConstants;
@@ -11,7 +13,6 @@ import java.nio.ByteBuffer;
 
 @UtilityClass
 public final class MessageCoder {
-
     private static final int INITIAL_PAYLOAD_CAPACITY = 256;
 
     public static @NotNull Message decode(@NotNull Protocol protocol, @NotNull MessageDirection direction, @NotNull ByteBuffer payload) throws DecodeException {

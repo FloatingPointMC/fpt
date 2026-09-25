@@ -1,6 +1,8 @@
 package io.github.floatingpointmc.fpt.protocol;
 
 import io.github.floatingpointmc.fpt.codec.Codec;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
@@ -11,15 +13,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class Fingerprint {
-
     private final byte[] bytes;
 
-    Fingerprint(@NotNull byte[] bytes) {
-        this.bytes = bytes;
-    }
-
-    public @NotNull byte[] bytes() {
+    public byte @NotNull [] bytes() {
         byte[] copy = new byte[bytes.length];
         System.arraycopy(bytes, 0, copy, 0, bytes.length);
         return copy;

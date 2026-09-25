@@ -1,8 +1,8 @@
 package io.github.floatingpointmc.fpt.transport.netty;
 
-import io.github.floatingpointmc.fpt.codec.DecodeException;
+import io.github.floatingpointmc.fpt.codec.exceptions.DecodeException;
 import io.github.floatingpointmc.fpt.codec.MessageCoder;
-import io.github.floatingpointmc.fpt.protocol.Message;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.protocol.MessageDirection;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
 import io.netty.buffer.ByteBuf;

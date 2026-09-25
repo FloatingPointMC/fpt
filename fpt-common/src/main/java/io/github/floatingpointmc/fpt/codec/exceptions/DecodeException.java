@@ -1,9 +1,8 @@
-package io.github.floatingpointmc.fpt.codec;
+package io.github.floatingpointmc.fpt.codec.exceptions;
 
 import org.jetbrains.annotations.NotNull;
 
 public class DecodeException extends CodecException {
-
     public DecodeException(@NotNull String message) {
         super(message);
     }

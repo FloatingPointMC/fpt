@@ -2,6 +2,7 @@ package io.github.floatingpointmc.fpt.transport.netty;
 
 import io.github.floatingpointmc.fpt.codec.VarInt;
 import io.github.floatingpointmc.fpt.protocol.*;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
 import io.github.floatingpointmc.fpt.transport.MessageListener;
 import io.netty.bootstrap.Bootstrap;
@@ -134,9 +135,9 @@ public final class NettyClientTransport {
 
                     if (!serverHandshake.matches(protocol)) {
                         error.compareAndSet(null, new RuntimeException(
-                                "Handshake mismatch: expected id=" + protocol.identifier()
-                                        + " v=" + protocol.version()
-                                        + " fp=" + protocol.fingerprint().hex()
+                                "Handshake mismatch: expected id=" + protocol.getIdentifier()
+                                        + " v=" + protocol.getVersion()
+                                        + " fp=" + protocol.getFingerprint().hex()
                                         + ", got id=" + serverHandshake.identifier()
                                         + " v=" + serverHandshake.version()
                                         + " fp=" + serverHandshake.fingerprint().hex()));

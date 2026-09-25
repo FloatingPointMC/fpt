@@ -1,6 +1,8 @@
 package io.github.floatingpointmc.fpt.codec;
 
-import io.github.floatingpointmc.fpt.protocol.Message;
+import io.github.floatingpointmc.fpt.codec.exceptions.DecodeException;
+import io.github.floatingpointmc.fpt.codec.exceptions.EncodeException;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
 
@@ -14,7 +16,6 @@ import java.util.Map;
 
 @UtilityClass
 public final class AutoMessageCodec {
-
     public static <T extends Message> @NotNull MessageCodec<T> create(@NotNull Class<T> messageType, @NotNull Map<Class<?>, Codec<?>> codecMap) {
         List<FieldInfo> fields = collectFields(messageType, codecMap);
         return new ReflectionMessageCodec<>(messageType, fields);
@@ -75,7 +76,7 @@ public final class AutoMessageCodec {
         }
 
         @Override
-        public void encode(ByteBuffer buf, T message) throws EncodeException {
+        public void encode(@NotNull ByteBuffer buf, @NotNull T message) throws EncodeException {
             try {
                 for (FieldInfo fi : fields) {
                     Object value = fi.field.get(message);
@@ -92,7 +93,7 @@ public final class AutoMessageCodec {
         }
 
         @Override
-        public T decode(ByteBuffer buf) throws DecodeException {
+        public @NotNull T decode(@NotNull ByteBuffer buf) throws DecodeException {
             try {
                 T instance = messageType.newInstance();
                 for (FieldInfo fi : fields) {

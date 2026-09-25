@@ -1,5 +1,7 @@
 package io.github.floatingpointmc.fpt.codec;
 
+import io.github.floatingpointmc.fpt.codec.exceptions.DecodeException;
+import io.github.floatingpointmc.fpt.codec.exceptions.EncodeException;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
@@ -8,7 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public abstract class Codec<T> {
-
     private final @NotNull String identity;
 
     protected Codec(@NotNull String identity) {
@@ -30,103 +31,103 @@ public abstract class Codec<T> {
 
     private static final Codec<Boolean> BOOLEAN = new Codec<Boolean>("fpt:boolean") {
         @Override
-        public void encode(ByteBuffer buf, Boolean value) {
+        public void encode(@NotNull ByteBuffer buf, Boolean value) {
             buf.put(value ? (byte) 1 : (byte) 0);
         }
 
         @Override
-        public Boolean decode(ByteBuffer buf) {
+        public Boolean decode(@NotNull ByteBuffer buf) {
             return buf.get() != 0;
         }
     };
 
     private static final Codec<Byte> BYTE = new Codec<Byte>("fpt:byte") {
         @Override
-        public void encode(ByteBuffer buf, Byte value) {
+        public void encode(@NotNull ByteBuffer buf, Byte value) {
             buf.put(value);
         }
 
         @Override
-        public Byte decode(ByteBuffer buf) {
+        public Byte decode(@NotNull ByteBuffer buf) {
             return buf.get();
         }
     };
 
     private static final Codec<Short> SHORT = new Codec<Short>("fpt:short") {
         @Override
-        public void encode(ByteBuffer buf, Short value) {
+        public void encode(@NotNull ByteBuffer buf, Short value) {
             buf.putShort(value);
         }
 
         @Override
-        public Short decode(ByteBuffer buf) {
+        public Short decode(@NotNull ByteBuffer buf) {
             return buf.getShort();
         }
     };
 
     private static final Codec<Integer> INTEGER = new Codec<Integer>("fpt:int:varint32") {
         @Override
-        public void encode(ByteBuffer buf, Integer value) throws EncodeException {
+        public void encode(@NotNull ByteBuffer buf, Integer value) throws EncodeException {
             VarInt.writeVarInt(buf, value);
         }
 
         @Override
-        public Integer decode(ByteBuffer buf) throws DecodeException {
+        public Integer decode(@NotNull ByteBuffer buf) throws DecodeException {
             return VarInt.readVarInt(buf);
         }
     };
 
     private static final Codec<Long> LONG = new Codec<Long>("fpt:long:varlong64") {
         @Override
-        public void encode(ByteBuffer buf, Long value) throws EncodeException {
+        public void encode(@NotNull ByteBuffer buf, Long value) throws EncodeException {
             VarLong.writeVarLong(buf, value);
         }
 
         @Override
-        public Long decode(ByteBuffer buf) throws DecodeException {
+        public Long decode(@NotNull ByteBuffer buf) throws DecodeException {
             return VarLong.readVarLong(buf);
         }
     };
 
     private static final Codec<Float> FLOAT = new Codec<Float>("fpt:float") {
         @Override
-        public void encode(ByteBuffer buf, Float value) {
+        public void encode(@NotNull ByteBuffer buf, Float value) {
             buf.putFloat(value);
         }
 
         @Override
-        public Float decode(ByteBuffer buf) {
+        public Float decode(@NotNull ByteBuffer buf) {
             return buf.getFloat();
         }
     };
 
     private static final Codec<Double> DOUBLE = new Codec<Double>("fpt:double") {
         @Override
-        public void encode(ByteBuffer buf, Double value) {
+        public void encode(@NotNull ByteBuffer buf, Double value) {
             buf.putDouble(value);
         }
 
         @Override
-        public Double decode(ByteBuffer buf) {
+        public Double decode(@NotNull ByteBuffer buf) {
             return buf.getDouble();
         }
     };
 
     private static final Codec<Character> CHARACTER = new Codec<Character>("fpt:char") {
         @Override
-        public void encode(ByteBuffer buf, Character value) {
+        public void encode(@NotNull ByteBuffer buf, Character value) {
             buf.putChar(value);
         }
 
         @Override
-        public Character decode(ByteBuffer buf) {
+        public Character decode(@NotNull ByteBuffer buf) {
             return buf.getChar();
         }
     };
 
     private static final Codec<String> STRING = new Codec<String>("fpt:string:utf8") {
         @Override
-        public void encode(ByteBuffer buf, String value) throws EncodeException {
+        public void encode(@NotNull ByteBuffer buf, String value) throws EncodeException {
             byte[] bytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
             if (bytes.length > 32768) {
                 throw new EncodeException("String too long: " + bytes.length);
@@ -136,7 +137,7 @@ public abstract class Codec<T> {
         }
 
         @Override
-        public String decode(ByteBuffer buf) throws DecodeException {
+        public String decode(@NotNull ByteBuffer buf) throws DecodeException {
             int length = VarInt.readVarInt(buf);
             if (length < 0) {
                 throw new DecodeException("Negative string length: " + length);
@@ -155,13 +156,13 @@ public abstract class Codec<T> {
 
     private static final Codec<java.util.UUID> UUID = new Codec<java.util.UUID>("fpt:uuid:128") {
         @Override
-        public void encode(ByteBuffer buf, java.util.UUID value) {
+        public void encode(@NotNull ByteBuffer buf, java.util.UUID value) {
             buf.putLong(value.getMostSignificantBits());
             buf.putLong(value.getLeastSignificantBits());
         }
 
         @Override
-        public java.util.UUID decode(ByteBuffer buf) {
+        public java.util.UUID decode(@NotNull ByteBuffer buf) {
             long msb = buf.getLong();
             long lsb = buf.getLong();
             return new java.util.UUID(msb, lsb);
@@ -170,7 +171,7 @@ public abstract class Codec<T> {
 
     private static final Codec<byte[]> BYTE_ARRAY = new Codec<byte[]>("fpt:bytes") {
         @Override
-        public void encode(ByteBuffer buf, byte[] value) throws EncodeException {
+        public void encode(@NotNull ByteBuffer buf, byte[] value) throws EncodeException {
             if (value.length > 32768) {
                 throw new EncodeException("Byte array too long: " + value.length);
             }
@@ -179,7 +180,7 @@ public abstract class Codec<T> {
         }
 
         @Override
-        public byte[] decode(ByteBuffer buf) throws DecodeException {
+        public byte[] decode(@NotNull ByteBuffer buf) throws DecodeException {
             int length = VarInt.readVarInt(buf);
             if (length < 0) {
                 throw new DecodeException("Negative byte array length: " + length);

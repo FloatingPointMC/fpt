@@ -1,7 +1,5 @@
 package io.github.floatingpointmc.fpt.protocol;
 
-import io.github.floatingpointmc.fpt.codec.DecodeException;
-import io.github.floatingpointmc.fpt.codec.EncodeException;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -50,8 +48,8 @@ class HandshakeTest {
 
     @Test
     void handshakeFingerprintMismatch() {
-        Protocol server = Protocol.create().register(ProtocolTest.MessageA.class);
-        Protocol client = Protocol.create().register(ProtocolTest.MessageB.class);
+        Protocol server = Protocol.create().registerC2S(ProtocolTest.MessageA.class);
+        Protocol client = Protocol.create().registerC2S(ProtocolTest.MessageB.class);
         HandshakeMessage clientHandshake = HandshakeCodec.fromProtocol(client);
         assertFalse(clientHandshake.matches(server));
     }

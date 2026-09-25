@@ -2,10 +2,10 @@ package io.github.floatingpointmc.fpt.server;
 
 import com.sun.istack.internal.NotNull;
 import io.github.floatingpointmc.fpt.client.FPTClient;
-import io.github.floatingpointmc.fpt.protocol.C2SMessage;
-import io.github.floatingpointmc.fpt.protocol.Message;
+import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
-import io.github.floatingpointmc.fpt.protocol.S2CMessage;
+import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
 import io.github.floatingpointmc.fpt.transport.MessageListener;
 import io.netty.channel.Channel;
@@ -54,7 +54,7 @@ class LoopbackTest {
     @Test
     void loopbackCommunication() throws Exception {
         Protocol protocol = Protocol.create()
-                .register(ChatMessage.class)
+                .registerC2S(ChatMessage.class)
                 .registerS2C(ChatResponse.class);
 
         final List<Message> receivedOnServer = new ArrayList<>();
@@ -108,7 +108,7 @@ class LoopbackTest {
     @Test
     void handshakeMismatchDisconnects() throws Exception {
         Protocol serverProtocol = Protocol.create()
-                .register(ChatMessage.class);
+                .registerC2S(ChatMessage.class);
 
         Protocol clientProtocol = Protocol.create();
 

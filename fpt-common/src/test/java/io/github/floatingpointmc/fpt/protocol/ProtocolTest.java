@@ -2,6 +2,8 @@ package io.github.floatingpointmc.fpt.protocol;
 
 import io.github.floatingpointmc.fpt.codec.Codec;
 import io.github.floatingpointmc.fpt.codec.Fixed32Codec;
+import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
+import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -26,33 +28,33 @@ class ProtocolTest {
     @Test
     void protocolIsImmutable() {
         Protocol base = Protocol.create();
-        Protocol a = base.register(MessageA.class);
-        Protocol b = base.register(MessageB.class);
+        Protocol a = base.registerC2S(MessageA.class);
+        Protocol b = base.registerC2S(MessageB.class);
 
-        assertEquals(0, base.c2sRegistry().size());
-        assertEquals(1, a.c2sRegistry().size());
-        assertEquals(1, b.c2sRegistry().size());
+        assertEquals(0, base.getC2sRegistry().size());
+        assertEquals(1, a.getC2sRegistry().size());
+        assertEquals(1, b.getC2sRegistry().size());
 
-        assertTrue(a.c2sRegistry().isRegistered(MessageA.class));
-        assertFalse(a.c2sRegistry().isRegistered(MessageB.class));
+        assertTrue(a.getC2sRegistry().isRegistered(MessageA.class));
+        assertFalse(a.getC2sRegistry().isRegistered(MessageB.class));
 
-        assertTrue(b.c2sRegistry().isRegistered(MessageB.class));
-        assertFalse(b.c2sRegistry().isRegistered(MessageA.class));
+        assertTrue(b.getC2sRegistry().isRegistered(MessageB.class));
+        assertFalse(b.getC2sRegistry().isRegistered(MessageA.class));
     }
 
     @Test
     void registryIsImmutable() {
         Protocol base = Protocol.create();
-        Protocol a = base.register(MessageA.class);
-        Protocol ab = a.register(MessageB.class);
+        Protocol a = base.registerC2S(MessageA.class);
+        Protocol ab = a.registerC2S(MessageB.class);
 
-        assertEquals(0, base.c2sRegistry().size());
-        assertEquals(1, a.c2sRegistry().size());
-        assertEquals(2, ab.c2sRegistry().size());
+        assertEquals(0, base.getC2sRegistry().size());
+        assertEquals(1, a.getC2sRegistry().size());
+        assertEquals(2, ab.getC2sRegistry().size());
 
-        assertTrue(ab.c2sRegistry().isRegistered(MessageA.class));
-        assertTrue(ab.c2sRegistry().isRegistered(MessageB.class));
-        assertFalse(a.c2sRegistry().isRegistered(MessageB.class));
+        assertTrue(ab.getC2sRegistry().isRegistered(MessageA.class));
+        assertTrue(ab.getC2sRegistry().isRegistered(MessageB.class));
+        assertFalse(a.getC2sRegistry().isRegistered(MessageB.class));
     }
 
     @Test
@@ -78,10 +80,10 @@ class ProtocolTest {
 
     @Test
     void defaultProtocolIsolation() {
-        Protocol custom = Protocol.DEFAULT_PROTOCOL.register(MessageA.class);
+        Protocol custom = Protocol.DEFAULT_PROTOCOL.registerC2S(MessageA.class);
 
-        assertEquals(0, Protocol.DEFAULT_PROTOCOL.c2sRegistry().size());
-        assertEquals(1, custom.c2sRegistry().size());
+        assertEquals(0, Protocol.DEFAULT_PROTOCOL.getC2sRegistry().size());
+        assertEquals(1, custom.getC2sRegistry().size());
     }
 
     @Test
@@ -89,19 +91,19 @@ class ProtocolTest {
         Protocol base = Protocol.create();
         Protocol withS2C = base.registerS2C(MessageC.class);
 
-        assertEquals(0, base.s2cRegistry().size());
-        assertEquals(1, withS2C.s2cRegistry().size());
-        assertTrue(withS2C.s2cRegistry().isRegistered(MessageC.class));
+        assertEquals(0, base.getS2cRegistry().size());
+        assertEquals(1, withS2C.getS2cRegistry().size());
+        assertTrue(withS2C.getS2cRegistry().isRegistered(MessageC.class));
     }
 
     @Test
     void messageIdAssignment() {
         Protocol protocol = Protocol.create()
-                .register(MessageA.class)
-                .register(MessageB.class);
+                .registerC2S(MessageA.class)
+                .registerC2S(MessageB.class);
 
-        assertEquals(0, protocol.c2sRegistry().getMessageId(MessageA.class));
-        assertEquals(1, protocol.c2sRegistry().getMessageId(MessageB.class));
+        assertEquals(0, protocol.getC2sRegistry().getMessageId(MessageA.class));
+        assertEquals(1, protocol.getC2sRegistry().getMessageId(MessageB.class));
     }
 
     @Test
@@ -117,13 +119,13 @@ class ProtocolTest {
     @Test
     void protocolCreateWithIdentifierAndVersion() {
         Protocol p = Protocol.create("myapp", 3);
-        assertEquals("myapp", p.identifier());
-        assertEquals(3, p.version());
+        assertEquals("myapp", p.getIdentifier());
+        assertEquals(3, p.getVersion());
     }
 
     @Test
     void defaultProtocolHasDefaultIdentifierAndVersion() {
-        assertEquals("fpt", Protocol.DEFAULT_PROTOCOL.identifier());
-        assertEquals(1, Protocol.DEFAULT_PROTOCOL.version());
+        assertEquals("fpt", Protocol.DEFAULT_PROTOCOL.getIdentifier());
+        assertEquals(1, Protocol.DEFAULT_PROTOCOL.getVersion());
     }
 }

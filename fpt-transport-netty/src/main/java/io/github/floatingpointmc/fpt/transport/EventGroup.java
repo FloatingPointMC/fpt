@@ -6,7 +6,6 @@ import io.netty.channel.nio.NioIoHandler;
 import org.jetbrains.annotations.NotNull;
 
 public final class EventGroup implements AutoCloseable {
-
     private final @NotNull EventLoopGroup bossGroup;
     private final @NotNull EventLoopGroup workerGroup;
     private final boolean owned;
