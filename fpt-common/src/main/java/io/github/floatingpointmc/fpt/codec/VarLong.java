@@ -1,7 +1,6 @@
 package io.github.floatingpointmc.fpt.codec;
 
 import io.github.floatingpointmc.fpt.codec.exceptions.DecodeException;
-import io.github.floatingpointmc.fpt.codec.exceptions.EncodeException;
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
 
