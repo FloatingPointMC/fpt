@@ -14,7 +14,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import lombok.AccessLevel;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,11 +30,8 @@ public final class NettyClientTransport {
 
     private static final long HANDSHAKE_TIMEOUT_SECONDS = 10;
 
-    @Getter
     private final @NotNull Protocol protocol;
-    @Getter
     private final @NotNull EventGroup eventGroup;
-    @Getter
     private final boolean ownedEventGroup;
     private final @NotNull Messenger messenger;
 

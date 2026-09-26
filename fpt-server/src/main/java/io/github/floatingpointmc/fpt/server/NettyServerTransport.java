@@ -13,43 +13,34 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import java.net.InetSocketAddress;
 import lombok.AccessLevel;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public final class NettyServerTransport {
+final class NettyServerTransport {
     private static final Logger LOGGER = Logger.getLogger(NettyServerTransport.class.getName());
 
-    @Getter
-    private final CopyOnWriteArraySet<Channel> channels = new CopyOnWriteArraySet<>();
-    @Getter
-    private final Protocol protocol;
-    @Getter
-    private final EventGroup eventGroup;
-    @Getter
+    private final @NotNull Protocol protocol;
+    private final @NotNull EventGroup eventGroup;
     private final boolean ownedEventGroup;
-    private final ArrayList<Messenger> messenger;
+    private final @NotNull ArrayList<Messenger> messenger;
 
-    private Channel serverChannel;
-
-    public NettyServerTransport(@NotNull Protocol protocol, @NotNull EventGroup eventGroup,
-                                boolean ownedEventGroup, @NotNull List<Messenger> messenger) {
+    NettyServerTransport(@NotNull Protocol protocol, @NotNull EventGroup eventGroup,
+                         boolean ownedEventGroup, @NotNull List<Messenger> messenger) {
         this.protocol = protocol;
         this.eventGroup = eventGroup;
         this.ownedEventGroup = ownedEventGroup;
         this.messenger = new ArrayList<>(messenger);
     }
 
-    public void start(@NotNull String host, int port) throws InterruptedException {
+    @NotNull NettyServerRuntime start(@NotNull String host, int port) throws InterruptedException {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(eventGroup.bossGroup(), eventGroup.workerGroup())
                 .channel(NioServerSocketChannel.class)
@@ -68,26 +59,10 @@ public final class NettyServerTransport {
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
 
         ChannelFuture future = bootstrap.bind(host, port).sync();
-        serverChannel = future.channel();
+        Channel serverChannel = future.channel();
         int actualPort = ((InetSocketAddress) serverChannel.localAddress()).getPort();
         LOGGER.info("FPT Server started on " + host + ":" + actualPort);
-    }
-
-    public void stop() {
-        if (serverChannel != null) {
-            serverChannel.close().awaitUninterruptibly();
-        }
-        if (ownedEventGroup) {
-            eventGroup.close();
-        }
-        LOGGER.info("FPT Server stopped");
-    }
-
-    public int getActualPort() {
-        if (serverChannel != null) {
-            return ((InetSocketAddress) serverChannel.localAddress()).getPort();
-        }
-        return -1;
+        return new NettyServerRuntime(serverChannel, eventGroup, ownedEventGroup);
     }
 
     static final class ServerHandshakeHandler extends ChannelInboundHandlerAdapter {

@@ -173,8 +173,8 @@ server.run();
 With a Messenger:
 
 ```java
-FPTServer server = FPTServer.create("0.0.0.0", 25565, protocol)
-        .messenger(myMessenger);
+FPTServer server = FPTServer.create("0.0.0.0", 25565, protocol);
+server.messenger(myMessenger);
 server.run();
 ```
 
@@ -188,7 +188,7 @@ Server API:
 | `FPTServer.create(host, port, protocol, eventGroup)` | Create a server with full configuration |
 | `server.messenger(messenger...)` | Set Messenger(s) before running; throws `IllegalStateException` after `run()` |
 | `server.run()` | Start the server; throws `IllegalStateException` if already running |
-| `server.stop()` | Stop the server |
+| `server.stop()` | Stop the server (idempotent) |
 | `server.isRunning()` | Whether the server is running |
 | `server.getHost()` | The host address |
 | `server.getPort()` | Actual bound port (useful with port 0) |
@@ -212,8 +212,8 @@ client.connect();
 With a Messenger:
 
 ```java
-FPTClient client = FPTClient.create("localhost", 25565, protocol)
-        .messenger(myMessenger);
+FPTClient client = FPTClient.create("localhost", 25565, protocol);
+client.messenger(myMessenger);
 client.connect();
 ```
 
@@ -227,7 +227,7 @@ Client API:
 | `FPTClient.create(host, port, protocol, eventGroup)` | Create a client with full configuration |
 | `client.messenger(messenger)` | Set Messenger before connecting; throws `IllegalStateException` after `connect()` |
 | `client.connect()` | Connect to the server; throws `IllegalStateException` if already connected |
-| `client.disconnect()` | Disconnect from the server |
+| `client.disconnect()` | Disconnect from the server (idempotent) |
 | `client.isConnected()` | Whether the client is connected |
 | `client.getHost()` | The host address |
 | `client.getPort()` | The port |
@@ -252,8 +252,8 @@ public interface Messenger {
 `Messenger.empty()` returns a no-op implementation:
 
 ```java
-FPTServer server = FPTServer.create("0.0.0.0", 25565)
-        .messenger(Messenger.empty());
+FPTServer server = FPTServer.create("0.0.0.0", 25565);
+server.messenger(Messenger.empty());
 server.run();
 ```
 
@@ -269,8 +269,8 @@ AbstractMessenger myMessenger = new AbstractMessenger() {
     }
 };
 
-FPTClient client = FPTClient.create("localhost", 25565)
-        .messenger(myMessenger);
+FPTClient client = FPTClient.create("localhost", 25565);
+client.messenger(myMessenger);
 client.connect();
 
 // Send a message
@@ -283,8 +283,8 @@ Messenger must be configured **before** `run()` or `connect()`:
 
 ```java
 // Correct: configure before run
-FPTServer server = FPTServer.create("0.0.0.0", 25565)
-        .messenger(myMessenger);
+FPTServer server = FPTServer.create("0.0.0.0", 25565);
+server.messenger(myMessenger);
 server.run();
 ```
 
@@ -302,8 +302,8 @@ This ensures that all connections see a consistent Messenger from the moment the
 A server can have multiple Messengers (one per connection type or purpose):
 
 ```java
-FPTServer server = FPTServer.create("0.0.0.0", 25565)
-        .messenger(chatMessenger, systemMessenger);
+FPTServer server = FPTServer.create("0.0.0.0", 25565);
+server.messenger(chatMessenger, systemMessenger);
 server.run();
 ```
 
@@ -482,6 +482,23 @@ FPT API (Protocol, FPTClient, FPTServer)
               ↓
      Netty implementation
      (fpt-transport-netty)
+```
+
+The server architecture separates immutable configuration from mutable runtime state:
+
+```text
+FPTServer (mutable)
+    configuration + lifecycle facade
+        │
+        │ creates on run()
+        ▼
+NettyServerTransport (immutable)
+    protocol, eventGroup, messengers
+        │
+        │ start()
+        ▼
+NettyServerRuntime (mutable)
+    serverChannel, actualPort, active channels
 ```
 
 The default transport uses Netty with NIO. The pipeline per connection is:

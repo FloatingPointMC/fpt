@@ -5,8 +5,9 @@ import io.github.floatingpointmc.fpt.transport.EventGroup;
 import io.github.floatingpointmc.fpt.transport.Messenger;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -14,16 +15,24 @@ public final class FPTServer {
     @Getter
     private final @NotNull String host;
     private final int port;
-    private final @NotNull NettyServerTransport transport;
+    private final @NotNull Protocol protocol;
+    private final @NotNull EventGroup eventGroup;
+    private final boolean ownedEventGroup;
+    private final @NotNull List<Messenger> messengers;
+
+    private @Nullable NettyServerRuntime runtime;
     @Getter
     private volatile boolean running = false;
 
     private FPTServer(@NotNull String host, int port, @NotNull Protocol protocol,
                       @NotNull EventGroup eventGroup, boolean ownedEventGroup,
-                      @NotNull List<Messenger> messenger) {
+                      @NotNull List<Messenger> messengers) {
         this.host = host;
         this.port = port;
-        this.transport = new NettyServerTransport(protocol, eventGroup, ownedEventGroup, messenger);
+        this.protocol = protocol;
+        this.eventGroup = eventGroup;
+        this.ownedEventGroup = ownedEventGroup;
+        this.messengers = new ArrayList<>(messengers);
     }
 
     public static @NotNull FPTServer create(@NotNull String host, int port) {
@@ -44,35 +53,43 @@ public final class FPTServer {
         return new FPTServer(host, port, protocol, eventGroup, false, Collections.emptyList());
     }
 
-    public @NotNull FPTServer messenger(@NotNull Messenger... messenger) {
+    public void messenger(Messenger @NotNull ... messenger) {
         if (running) {
             throw new IllegalStateException("Cannot set messenger after server has started");
         }
-        return new FPTServer(host, port, transport.getProtocol(), transport.getEventGroup(),
-                transport.isOwnedEventGroup(), Arrays.asList(messenger));
+        this.messengers.clear();
+        Collections.addAll(this.messengers, messenger);
     }
 
     public void run() {
         if (running) {
             throw new IllegalStateException("Server is already running");
         }
-        running = true;
+        NettyServerTransport transport = new NettyServerTransport(protocol, eventGroup, ownedEventGroup, messengers);
         try {
-            transport.start(host, port);
+            this.runtime = transport.start(host, port);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            running = false;
             throw new RuntimeException("Failed to start server", e);
         }
+        running = true;
     }
 
     public void stop() {
+        if (!running) {
+            return;
+        }
         running = false;
-        transport.stop();
+        if (runtime != null) {
+            runtime.stop();
+            runtime = null;
+        }
     }
 
     public int getPort() {
-        int actual = transport.getActualPort();
-        return actual >= 0 ? actual : port;
+        if (runtime != null) {
+            return runtime.getActualPort();
+        }
+        return port;
     }
 }

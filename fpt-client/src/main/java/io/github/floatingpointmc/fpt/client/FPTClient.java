@@ -9,11 +9,16 @@ import org.jetbrains.annotations.NotNull;
 public final class FPTClient {
     public static final Protocol DEFAULT_PROTOCOL = Protocol.create();
 
-    private final @NotNull NettyClientTransport transport;
     @Getter
     private final @NotNull String host;
     @Getter
     private final int port;
+    private final @NotNull Protocol protocol;
+    private final @NotNull EventGroup eventGroup;
+    private final boolean ownedEventGroup;
+    private @NotNull Messenger messenger;
+
+    private @NotNull NettyClientTransport transport;
     private volatile boolean connected = false;
 
     private FPTClient(@NotNull String host, int port, @NotNull Protocol protocol,
@@ -21,6 +26,10 @@ public final class FPTClient {
                       @NotNull Messenger messenger) {
         this.host = host;
         this.port = port;
+        this.protocol = protocol;
+        this.eventGroup = eventGroup;
+        this.ownedEventGroup = ownedEventGroup;
+        this.messenger = messenger;
         this.transport = new NettyClientTransport(protocol, eventGroup, ownedEventGroup, messenger);
     }
 
@@ -42,12 +51,12 @@ public final class FPTClient {
         return new FPTClient(host, port, protocol, eventGroup, false, Messenger.empty());
     }
 
-    public @NotNull FPTClient messenger(@NotNull Messenger messenger) {
+    public void messenger(@NotNull Messenger messenger) {
         if (connected) {
             throw new IllegalStateException("Cannot set messenger after client has connected");
         }
-        return new FPTClient(host, port, transport.getProtocol(), transport.getEventGroup(),
-                transport.isOwnedEventGroup(), messenger);
+        this.messenger = messenger;
+        this.transport = new NettyClientTransport(protocol, eventGroup, ownedEventGroup, messenger);
     }
 
     public void connect() {
@@ -64,6 +73,9 @@ public final class FPTClient {
     }
 
     public void disconnect() {
+        if (!connected) {
+            return;
+        }
         connected = false;
         transport.disconnect();
     }

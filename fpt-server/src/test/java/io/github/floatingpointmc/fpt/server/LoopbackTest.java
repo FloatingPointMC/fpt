@@ -89,8 +89,8 @@ class LoopbackTest {
             }
         };
 
-        FPTServer server = FPTServer.create("127.0.0.1", 0, protocol)
-                .messenger(serverMessenger);
+        FPTServer server = FPTServer.create("127.0.0.1", 0, protocol);
+        server.messenger(serverMessenger);
         server.run();
         int port = server.getPort();
 
@@ -101,8 +101,8 @@ class LoopbackTest {
                 }
             };
 
-            FPTClient client = FPTClient.create("127.0.0.1", port, protocol)
-                    .messenger(clientMessenger);
+            FPTClient client = FPTClient.create("127.0.0.1", port, protocol);
+            client.messenger(clientMessenger);
             client.connect();
             assertTrue(client.isConnected());
 

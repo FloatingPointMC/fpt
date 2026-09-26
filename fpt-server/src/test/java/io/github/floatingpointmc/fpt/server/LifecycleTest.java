@@ -34,8 +34,8 @@ class LifecycleTest {
 
     @Test
     void serverMessengerBeforeRun() {
-        FPTServer server = FPTServer.create("127.0.0.1", 0)
-                .messenger(Messenger.empty());
+        FPTServer server = FPTServer.create("127.0.0.1", 0);
+        server.messenger(Messenger.empty());
         server.run();
         assertTrue(server.isRunning());
         server.stop();
@@ -50,6 +50,16 @@ class LifecycleTest {
         } finally {
             server.stop();
         }
+    }
+
+    @Test
+    void serverStopIsIdempotent() {
+        FPTServer server = FPTServer.create("127.0.0.1", 0);
+        server.run();
+        server.stop();
+        assertFalse(server.isRunning());
+        server.stop();
+        assertFalse(server.isRunning());
     }
 
     @Test
@@ -92,8 +102,8 @@ class LifecycleTest {
         server.run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port)
-                    .messenger(Messenger.empty());
+            FPTClient client = FPTClient.create("127.0.0.1", port);
+            client.messenger(Messenger.empty());
             client.connect();
             assertTrue(client.isConnected());
             client.disconnect();
@@ -115,6 +125,23 @@ class LifecycleTest {
             } finally {
                 client.disconnect();
             }
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void clientDisconnectIsIdempotent() {
+        FPTServer server = FPTServer.create("0.0.0.0", 0);
+        server.run();
+        int port = server.getPort();
+        try {
+            FPTClient client = FPTClient.create("127.0.0.1", port);
+            client.connect();
+            client.disconnect();
+            assertFalse(client.isConnected());
+            client.disconnect();
+            assertFalse(client.isConnected());
         } finally {
             server.stop();
         }
