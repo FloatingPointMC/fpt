@@ -22,7 +22,7 @@ public final class NettyMessageEncoder extends MessageToMessageEncoder<Message> 
     private final @NotNull Protocol protocol;
 
     @Override
-    protected void encode(ChannelHandlerContext ctx, Message msg, List<Object> out) throws Exception {
+    protected void encode(ChannelHandlerContext ctx, Message msg, List<Object> out) {
         try {
             byte[] packet = MessageCoder.encode(protocol, msg);
             ByteBuf encoded = Unpooled.wrappedBuffer(packet);

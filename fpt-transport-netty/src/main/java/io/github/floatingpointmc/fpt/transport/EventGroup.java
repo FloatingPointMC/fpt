@@ -3,18 +3,15 @@ package io.github.floatingpointmc.fpt.transport;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.MultiThreadIoEventLoopGroup;
 import io.netty.channel.nio.NioIoHandler;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class EventGroup implements AutoCloseable {
     private final @NotNull EventLoopGroup bossGroup;
     private final @NotNull EventLoopGroup workerGroup;
     private final boolean owned;
-
-    private EventGroup(@NotNull EventLoopGroup bossGroup, @NotNull EventLoopGroup workerGroup, boolean owned) {
-        this.bossGroup = bossGroup;
-        this.workerGroup = workerGroup;
-        this.owned = owned;
-    }
 
     public static @NotNull EventGroup nio() {
         EventLoopGroup boss = new MultiThreadIoEventLoopGroup(1, NioIoHandler.newFactory());

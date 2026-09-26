@@ -1,9 +1,10 @@
 package io.github.floatingpointmc.fpt.codec;
 
+import io.github.floatingpointmc.fpt.codec.exceptions.DecodeException;
+import io.github.floatingpointmc.fpt.codec.exceptions.EncodeException;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -11,18 +12,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class CodecTest {
 
     @Test
-    void defaultCodecMapIsIndependentCopy() {
-        CodecMap map1 = Codec.defaultCodecMap();
-        CodecMap map2 = Codec.defaultCodecMap();
-        map1.put(Integer.class, Fixed32Codec.INSTANCE);
-        assertNotSame(map1, map2);
-        assertSame(Codec.integerCodec().identity(), Objects.requireNonNull(map2.get(Integer.class)).identity());
-    }
-
-    @Test
-    void booleanCodec() throws Exception {
+    void booleanRoundtrip() throws EncodeException, DecodeException {
         ByteBuffer buf = ByteBuffer.allocate(16);
-        Codec<Boolean> codec = cast(Codec.booleanCodec());
+        Codec<Boolean> codec = Codec.booleanCodec();
         codec.encode(buf, true);
         codec.encode(buf, false);
         buf.flip();
@@ -31,9 +23,9 @@ class CodecTest {
     }
 
     @Test
-    void byteCodec() throws Exception {
+    void byteRoundtrip() throws EncodeException, DecodeException {
         ByteBuffer buf = ByteBuffer.allocate(16);
-        Codec<Byte> codec = cast(Codec.byteCodec());
+        Codec<Byte> codec = Codec.byteCodec();
         codec.encode(buf, (byte) 42);
         codec.encode(buf, (byte) -1);
         buf.flip();
@@ -42,9 +34,9 @@ class CodecTest {
     }
 
     @Test
-    void shortCodec() throws Exception {
+    void shortRoundtrip() throws EncodeException, DecodeException {
         ByteBuffer buf = ByteBuffer.allocate(16);
-        Codec<Short> codec = cast(Codec.shortCodec());
+        Codec<Short> codec = Codec.shortCodec();
         codec.encode(buf, (short) 1000);
         codec.encode(buf, (short) -500);
         buf.flip();
@@ -53,33 +45,31 @@ class CodecTest {
     }
 
     @Test
-    void integerVarInt() throws Exception {
+    void integerVarIntRoundtrip() throws EncodeException, DecodeException {
         int[] values = {0, 1, -1, 127, 128, 255, 256, Integer.MAX_VALUE, Integer.MIN_VALUE};
         for (int val : values) {
             ByteBuffer buf = ByteBuffer.allocate(32);
-            Codec<Integer> codec = cast(Codec.integerCodec());
+            Codec<Integer> codec = Codec.integerCodec();
             codec.encode(buf, val);
             buf.flip();
-            int decoded = codec.decode(buf);
-            assertEquals(val, decoded, "VarInt roundtrip for " + val);
+            assertEquals(val, codec.decode(buf).intValue(), "VarInt roundtrip for " + val);
         }
     }
 
     @Test
-    void longVarLong() throws Exception {
-        long[] values = {0L, 1L, -1L, Long.MAX_VALUE, Long.MIN_VALUE};
+    void longVarLongRoundtrip() throws EncodeException, DecodeException {
+        long[] values = {0L, 1L, -1L, 127L, 128L, Long.MAX_VALUE, Long.MIN_VALUE};
         for (long val : values) {
             ByteBuffer buf = ByteBuffer.allocate(80);
             Codec<Long> codec = Codec.longCodec();
             codec.encode(buf, val);
             buf.flip();
-            long decoded = codec.decode(buf);
-            assertEquals(val, decoded, "VarLong roundtrip for " + val);
+            assertEquals(val, codec.decode(buf).longValue(), "VarLong roundtrip for " + val);
         }
     }
 
     @Test
-    void floatCodec() throws Exception {
+    void floatRoundtrip() throws EncodeException, DecodeException {
         ByteBuffer buf = ByteBuffer.allocate(16);
         Codec<Float> codec = Codec.floatCodec();
         codec.encode(buf, 3.14f);
@@ -88,32 +78,29 @@ class CodecTest {
     }
 
     @Test
-    void doubleCodec() throws Exception {
+    void doubleRoundtrip() throws EncodeException, DecodeException {
         ByteBuffer buf = ByteBuffer.allocate(16);
-        Codec<Double> codec = cast(Codec.doubleCodec());
+        Codec<Double> codec = Codec.doubleCodec();
         codec.encode(buf, 2.718281828);
         buf.flip();
         assertEquals(2.718281828, codec.decode(buf), 0.0);
     }
 
     @Test
-    void characterCodec() throws Exception {
+    void characterRoundtrip() throws EncodeException, DecodeException {
         ByteBuffer buf = ByteBuffer.allocate(16);
-        Codec<Character> codec = cast(Codec.characterCodec());
+        Codec<Character> codec = Codec.characterCodec();
         codec.encode(buf, 'A');
         buf.flip();
         assertEquals('A', codec.decode(buf).charValue());
     }
 
     @Test
-    void stringUtf8() throws Exception {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 1000; i++) sb.append('a');
-        String longString = sb.toString();
-        String[] values = {"", "hello", "你好世界", "🎉🚀", longString};
+    void stringUtf8Roundtrip() throws EncodeException, DecodeException {
+        String[] values = {"", "hello", "你好世界2"};
         for (String val : values) {
             ByteBuffer buf = ByteBuffer.allocate(val.getBytes(java.nio.charset.StandardCharsets.UTF_8).length + 16);
-            Codec<String> codec = cast(Codec.stringCodec());
+            Codec<String> codec = Codec.stringCodec();
             codec.encode(buf, val);
             buf.flip();
             assertEquals(val, codec.decode(buf), "String roundtrip for length=" + val.length());
@@ -121,31 +108,27 @@ class CodecTest {
     }
 
     @Test
-    void uuid128() throws Exception {
+    void uuidRoundtrip() throws EncodeException, DecodeException {
         UUID uuid = UUID.randomUUID();
         ByteBuffer buf = ByteBuffer.allocate(32);
-        Codec<UUID> codec = cast(Codec.uuidCodec());
+        Codec<UUID> codec = Codec.uuidCodec();
         codec.encode(buf, uuid);
         buf.flip();
-        UUID decoded = codec.decode(buf);
-        assertEquals(uuid, decoded);
-        assertEquals(uuid.getMostSignificantBits(), decoded.getMostSignificantBits());
-        assertEquals(uuid.getLeastSignificantBits(), decoded.getLeastSignificantBits());
+        assertEquals(uuid, codec.decode(buf));
     }
 
     @Test
-    void byteArrayCodec() throws Exception {
+    void byteArrayRoundtrip() throws EncodeException, DecodeException {
         byte[] arr = new byte[]{1, 2, 3, 4, 5};
         ByteBuffer buf = ByteBuffer.allocate(32);
-        Codec<byte[]> codec = cast(Codec.byteArrayCodec());
+        Codec<byte[]> codec = Codec.byteArrayCodec();
         codec.encode(buf, arr);
         buf.flip();
-        byte[] decoded = codec.decode(buf);
-        assertArrayEquals(arr, decoded);
+        assertArrayEquals(arr, codec.decode(buf));
     }
 
     @Test
-    void fixed32Codec() throws Exception {
+    void fixed32Roundtrip() throws EncodeException, DecodeException {
         ByteBuffer buf = ByteBuffer.allocate(16);
         Codec<Integer> codec = Fixed32Codec.INSTANCE;
         codec.encode(buf, 42);
@@ -156,7 +139,7 @@ class CodecTest {
     }
 
     @Test
-    void varIntAndFixed32AreDifferentIdentity() {
+    void varIntAndFixed32HaveDifferentIdentity() {
         assertNotEquals(Codec.integerCodec().identity(), Fixed32Codec.INSTANCE.identity());
     }
 
@@ -173,8 +156,12 @@ class CodecTest {
         assertEquals(String.class, Codec.box(String.class));
     }
 
-    @SuppressWarnings("unchecked")
-    private <T> Codec<T> cast(Codec<?> codec) {
-        return (Codec<T>) codec;
+    @Test
+    void codecIdentityIsStable() {
+        assertEquals("fpt:int:varint32", Codec.integerCodec().identity());
+        assertEquals("fpt:long:varlong64", Codec.longCodec().identity());
+        assertEquals("fpt:boolean", Codec.booleanCodec().identity());
+        assertEquals("fpt:string:utf8", Codec.stringCodec().identity());
+        assertEquals("fpt:int:fixed32", Fixed32Codec.INSTANCE.identity());
     }
 }

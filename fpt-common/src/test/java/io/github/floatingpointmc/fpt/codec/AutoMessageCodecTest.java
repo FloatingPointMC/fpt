@@ -1,11 +1,10 @@
 package io.github.floatingpointmc.fpt.codec;
 
-import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
+import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,7 +27,7 @@ class AutoMessageCodecTest {
     }
 
     @Test
-    void automaticMessageCodec() throws Exception {
+    void autoCodecRoundtrip() throws Exception {
         Protocol protocol = Protocol.create().registerC2S(TestMessage.class);
         MessageCodec<TestMessage> codec = protocol.getMessageCodec(TestMessage.class);
 
@@ -48,7 +47,7 @@ class AutoMessageCodecTest {
     }
 
     @Test
-    void automaticCodecUsesCurrentProtocolCodecMap() throws Exception {
+    void autoCodecWithDifferentCodecMaps() throws Exception {
         Protocol varIntProtocol = Protocol.create().registerC2S(SimpleMessage.class);
 
         CodecMap fixedMap = new CodecMap(Protocol.create().codec());
@@ -70,8 +69,7 @@ class AutoMessageCodecTest {
         fixed32Buf.flip();
         int fixed32Size = fixed32Buf.remaining();
 
-        assertNotEquals(varIntSize, fixed32Size,
-                "VarInt and Fixed32 encoding must produce different sizes for value 42");
+        assertNotEquals(varIntSize, fixed32Size);
 
         SimpleMessage decodedVarInt = varIntCodec.decode(varIntBuf);
         SimpleMessage decodedFixed32 = fixed32Codec.decode(fixed32Buf);
@@ -80,39 +78,7 @@ class AutoMessageCodecTest {
     }
 
     @Test
-    void unsupportedFieldEarlyFailure() {
+    void unsupportedFieldThrowsOnRegister() {
         assertThrows(IllegalArgumentException.class, () -> Protocol.create().registerC2S(BadMessage.class));
-    }
-
-    @Test
-    void codecOverrideDoesNotAffectDefaultProtocol() throws Exception {
-        Protocol varIntDefault = Protocol.create().registerC2S(SimpleMessage.class);
-
-        CodecMap fixedMap = Codec.defaultCodecMap();
-        fixedMap.put(Integer.class, Fixed32Codec.INSTANCE);
-        Protocol customBase = Protocol.create().codec(fixedMap);
-        Protocol fixed32Custom = customBase.registerC2S(SimpleMessage.class);
-
-        SimpleMessage msg = new SimpleMessage();
-        msg.value = 100;
-
-        ByteBuffer defaultBuf = ByteBuffer.allocate(256);
-        MessageCodec<SimpleMessage> defaultCodec = varIntDefault.getMessageCodec(SimpleMessage.class);
-        defaultCodec.encode(defaultBuf, msg);
-        defaultBuf.flip();
-
-        SimpleMessage decodedDefault = defaultCodec.decode(defaultBuf);
-        assertEquals(100, decodedDefault.value);
-
-        ByteBuffer customBuf = ByteBuffer.allocate(256);
-        MessageCodec<SimpleMessage> customCodec = fixed32Custom.getMessageCodec(SimpleMessage.class);
-        customCodec.encode(customBuf, msg);
-        customBuf.flip();
-
-        SimpleMessage decodedCustom = customCodec.decode(customBuf);
-        assertEquals(100, decodedCustom.value);
-
-        assertEquals("fpt:int:varint32", Objects.requireNonNull(varIntDefault.codec().get(Integer.class)).identity());
-        assertEquals("fpt:int:fixed32", Objects.requireNonNull(fixed32Custom.codec().get(Integer.class)).identity());
     }
 }

@@ -3,16 +3,13 @@ package io.github.floatingpointmc.fpt.transport.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 public final class NettyFrameDecoder extends ByteToMessageDecoder {
-
     private final int maxPacketSize;
-
-    public NettyFrameDecoder(int maxPacketSize) {
-        this.maxPacketSize = maxPacketSize;
-    }
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {

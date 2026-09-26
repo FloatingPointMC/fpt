@@ -8,13 +8,13 @@ FPT separates **protocol definition** from **transport implementation**. You def
 
 ## Tech Stack
 
-| Item | Value |
-|---|---|
-| Library target | Java 8 |
-| Gradle JVM | JDK 25 |
-| Transport | Netty 4.2.18.Final |
-| Build | Gradle (Kotlin DSL) |
-| Test | JUnit Jupiter 5.10.2 |
+| Item             | Value                                        |
+|------------------|----------------------------------------------|
+| Library target   | Java 8                                       |
+| Gradle JVM       | JDK 25                                       |
+| Transport        | Netty 4.2.18.Final                           |
+| Build            | Gradle (Kotlin DSL)                          |
+| Test             | JUnit Jupiter 5.10.2                         |
 | Dev dependencies | Lombok 1.18.36, JetBrains Annotations 26.1.0 |
 
 ## Quick Start
@@ -22,13 +22,15 @@ FPT separates **protocol definition** from **transport implementation**. You def
 Server:
 
 ```java
-FPTServer.run("0.0.0.0", 25565);
+FPTServer server = FPTServer.create("0.0.0.0", 25565);
+server.run();
 ```
 
 Client:
 
 ```java
-FPTClient.connect("localhost", 25565);
+FPTClient client = FPTClient.create("localhost", 25565);
+client.connect();
 ```
 
 This starts a server and connects a client using the default protocol. Both sides use `Protocol.create()`, which has the identifier `"fpt"` and version `1`. The handshake succeeds automatically, and the connection is ready.
@@ -84,7 +86,7 @@ Protocol protocol = Protocol.create("myapp", 2);
 
 ### Registering Messages
 
-C2S and S2C messages are registered independently:
+C2S and S2C messages are registered independently. Registration returns a new `Protocol` — the original is never modified:
 
 ```java
 Protocol protocol = Protocol.create()
@@ -121,10 +123,31 @@ Each registration returns a new independent protocol. `base` is never modified.
 
 ## Server and Client
 
+### Lifecycle
+
+Both `FPTServer` and `FPTClient` follow a strict lifecycle:
+
+```text
+CREATED / CONFIGURING
+        ↓
+  run() / connect()
+        ↓
+     RUNNING
+        ↓
+  stop() / disconnect()
+        ↓
+     STOPPED
+```
+
+**Configuration must be completed before `run()` or `connect()`.** Once a server is running or a client is connected, core configuration (including Messenger) cannot be changed.
+
 ### Server
 
+Create and start a server with the default protocol:
+
 ```java
-FPTServer server = FPTServer.run("0.0.0.0", 25565);
+FPTServer server = FPTServer.create("0.0.0.0", 25565);
+server.run();
 ```
 
 With a custom protocol:
@@ -134,62 +157,155 @@ Protocol protocol = Protocol.create()
         .registerC2S(ChatMessage.class)
         .registerS2C(ChatBroadcast.class);
 
-FPTServer server = FPTServer.run("0.0.0.0", 25565, protocol);
+FPTServer server = FPTServer.create("0.0.0.0", 25565, protocol);
+server.run();
 ```
 
-With full control over event group and message listener:
+With a custom event group:
 
 ```java
 EventGroup eventGroup = EventGroup.nio();
-MessageListener listener = new MessageListener() {
-    @Override
-    public void onConnectionActive(Channel channel) { }
 
-    @Override
-    public void onConnectionInactive(Channel channel) { }
+FPTServer server = FPTServer.create("0.0.0.0", 25565, protocol, eventGroup);
+server.run();
+```
 
-    @Override
-    public void onMessage(Message message, Channel channel) { }
-};
+With a Messenger:
 
-FPTServer server = FPTServer.run("0.0.0.0", 25565, protocol, eventGroup, listener);
+```java
+FPTServer server = FPTServer.create("0.0.0.0", 25565, protocol)
+        .messenger(myMessenger);
+server.run();
 ```
 
 Server API:
 
 | Method | Description |
 |---|---|
-| `server.isRunning()` | Whether the server is running |
-| `server.getPort()` | Actual bound port (useful with port 0) |
+| `FPTServer.create(host, port)` | Create a server with default protocol |
+| `FPTServer.create(host, port, protocol)` | Create a server with custom protocol |
+| `FPTServer.create(host, port, eventGroup)` | Create a server with custom event group |
+| `FPTServer.create(host, port, protocol, eventGroup)` | Create a server with full configuration |
+| `server.messenger(messenger...)` | Set Messenger(s) before running; throws `IllegalStateException` after `run()` |
+| `server.run()` | Start the server; throws `IllegalStateException` if already running |
 | `server.stop()` | Stop the server |
+| `server.isRunning()` | Whether the server is running |
+| `server.getHost()` | The host address |
+| `server.getPort()` | Actual bound port (useful with port 0) |
 
 ### Client
 
+Create and connect a client with the default protocol:
+
 ```java
-FPTClient client = FPTClient.connect("localhost", 25565);
+FPTClient client = FPTClient.create("localhost", 25565);
+client.connect();
 ```
 
 With a custom protocol:
 
 ```java
-FPTClient client = FPTClient.connect("localhost", 25565, protocol);
+FPTClient client = FPTClient.create("localhost", 25565, protocol);
+client.connect();
 ```
 
-With full control:
+With a Messenger:
 
 ```java
-FPTClient client = FPTClient.connect("localhost", 25565, protocol, eventGroup, listener);
+FPTClient client = FPTClient.create("localhost", 25565, protocol)
+        .messenger(myMessenger);
+client.connect();
 ```
 
 Client API:
 
 | Method | Description |
 |---|---|
-| `client.isConnected()` | Whether the client is connected |
-| `client.send(message)` | Send a message to the server |
+| `FPTClient.create(host, port)` | Create a client with default protocol |
+| `FPTClient.create(host, port, protocol)` | Create a client with custom protocol |
+| `FPTClient.create(host, port, eventGroup)` | Create a client with custom event group |
+| `FPTClient.create(host, port, protocol, eventGroup)` | Create a client with full configuration |
+| `client.messenger(messenger)` | Set Messenger before connecting; throws `IllegalStateException` after `connect()` |
+| `client.connect()` | Connect to the server; throws `IllegalStateException` if already connected |
 | `client.disconnect()` | Disconnect from the server |
+| `client.isConnected()` | Whether the client is connected |
+| `client.getHost()` | The host address |
+| `client.getPort()` | The port |
 
 The client and server must use the same protocol definition. The handshake verifies this automatically (see [Handshake](#handshake)).
+
+## Messenger
+
+`Messenger` is the interface for receiving connection lifecycle events and incoming messages, and for sending messages:
+
+```java
+public interface Messenger {
+    void onConnectionActive(Channel channel);
+    void onConnectionInactive(Channel channel);
+    void onMessage(Message message);
+    void send(Message message);
+}
+```
+
+### Empty Messenger
+
+`Messenger.empty()` returns a no-op implementation:
+
+```java
+FPTServer server = FPTServer.create("0.0.0.0", 25565)
+        .messenger(Messenger.empty());
+server.run();
+```
+
+### AbstractMessenger
+
+`AbstractMessenger` is a single-channel implementation. It stores the active `Channel` and sends messages through it:
+
+```java
+AbstractMessenger myMessenger = new AbstractMessenger() {
+    @Override
+    public void onMessage(Message message) {
+        // handle incoming message
+    }
+};
+
+FPTClient client = FPTClient.create("localhost", 25565)
+        .messenger(myMessenger);
+client.connect();
+
+// Send a message
+myMessenger.send(chatMessage);
+```
+
+### Messenger Lifecycle
+
+Messenger must be configured **before** `run()` or `connect()`:
+
+```java
+// Correct: configure before run
+FPTServer server = FPTServer.create("0.0.0.0", 25565)
+        .messenger(myMessenger);
+server.run();
+```
+
+```java
+// Incorrect: configure after run — throws IllegalStateException
+FPTServer server = FPTServer.create("0.0.0.0", 25565);
+server.run();
+server.messenger(myMessenger); // IllegalStateException!
+```
+
+This ensures that all connections see a consistent Messenger from the moment they are established. No runtime injection or hot-swapping of Messenger is supported.
+
+### Server Messenger
+
+A server can have multiple Messengers (one per connection type or purpose):
+
+```java
+FPTServer server = FPTServer.create("0.0.0.0", 25565)
+        .messenger(chatMessenger, systemMessenger);
+server.run();
+```
 
 ## Codec
 
@@ -199,6 +315,7 @@ A `Codec<T>` encodes and decodes a Java type to/from a binary wire format:
 public abstract class Codec<T> {
     public abstract void encode(ByteBuffer buf, T value) throws EncodeException;
     public abstract T decode(ByteBuffer buf) throws DecodeException;
+    public abstract String identity();
 }
 ```
 
@@ -206,7 +323,7 @@ A codec handles one Java type. A protocol's codec map determines which codec is 
 
 ### Default Codecs
 
-The default codec map (`Codec.DEFAULT_CODEC`) provides:
+The default codec map provides:
 
 | Java Type | Codec | Wire Format |
 |---|---|---|
@@ -240,21 +357,17 @@ Small absolute values produce fewer bytes. ZigZag maps signed integers to unsign
 
 ### Fixed32Codec
 
-`Fixed32Codec.INSTANCE` provides a fixed 4-byte big-endian encoding for `Integer`, as an alternative to the default VarInt codec. Use it when you prefer predictable size over compactness.
+`Fixed32Codec.INSTANCE` provides a fixed 4-byte big-endian encoding for `Integer`, as an alternative to the default VarInt codec. Use it when you prefer predictable size to compactness.
 
 ### Codec Override
 
 To customize the codec for a type, create a new codec map and pass it to the protocol:
 
 ```java
-import io.github.floatingpointmc.fpt.codec.Fixed32Codec;
-
-Protocol base = Protocol.create();
-
-Map<Class<?>, Codec<?>> customCodecs = new HashMap<>(base.codec());
+CodecMap customCodecs = new CodecMap(Protocol.create().codec());
 customCodecs.put(Integer.class, Fixed32Codec.INSTANCE);
 
-Protocol fixed32Protocol = base.codec(customCodecs);
+Protocol fixed32Protocol = Protocol.create().codec(customCodecs);
 ```
 
 Since codec configuration belongs to the protocol, different protocols can use different codecs for the same type:
@@ -263,6 +376,31 @@ Since codec configuration belongs to the protocol, different protocols can use d
 Protocol A  →  Integer uses VarInt
 Protocol B  →  Integer uses Fixed32
 ```
+
+## CodecMap
+
+`CodecMap` maps `Class<T>` to `Codec<T>`:
+
+```java
+CodecMap map = CodecMap.create();
+map.put(Integer.class, Codec.integerCodec());
+
+Codec<Integer> codec = map.get(Integer.class);
+```
+
+### Copy
+
+`CodecMap` has a copy constructor that creates an independent copy:
+
+```java
+CodecMap original = CodecMap.create();
+original.put(Integer.class, Codec.integerCodec());
+
+CodecMap copy = new CodecMap(original);
+// copy is independent: modifying copy does not affect original
+```
+
+The default codec map (`Codec.defaultCodecMap()`) returns a new independent copy each time.
 
 ## AutoMessageCodec
 
@@ -340,7 +478,7 @@ The handshake timeout on the client side is 10 seconds.
 FPT API (Protocol, FPTClient, FPTServer)
               ↓
      Transport abstraction
-     (EventGroup, MessageListener)
+     (EventGroup, Messenger)
               ↓
      Netty implementation
      (fpt-transport-netty)
@@ -368,23 +506,9 @@ To wrap existing Netty event loop groups:
 EventGroup group = EventGroup.wrap(bossGroup, workerGroup);
 ```
 
-When you use the `EventGroup.nio()` or `EventGroup.wrap()` factory, you are responsible for closing the group. When you use the simplified `FPTServer.run(host, port)` or `FPTClient.connect(host, port)` APIs, FPT creates and owns the event group.
+When you pass an `EventGroup` to `FPTServer.create()` or `FPTClient.create()`, you are responsible for closing it. When you use the simplified `create(host, port)` or `create(host, port, protocol)` APIs, FPT creates and owns the event group.
 
 EventGroup is runtime configuration, not part of the protocol definition.
-
-## MessageListener
-
-`Messenger` receives connection lifecycle events and incoming messages:
-
-```java
-public interface MessageListener {
-    void onConnectionActive(Channel channel);
-    void onConnectionInactive(Channel channel);
-    void onMessage(Message message, Channel channel);
-}
-```
-
-Use `MessageListener.empty()` for a no-op listener.
 
 ## Module Structure
 
@@ -393,7 +517,7 @@ fpt/
 ├── fpt-common/           Protocol, Message, Codec, Fingerprint, MessageRegistry
 ├── fpt-client/            FPTClient
 ├── fpt-server/            FPTServer
-└── fpt-transport-netty/   Netty transport, EventGroup, MessageListener
+└── fpt-transport-netty/   Netty transport, EventGroup, Messenger
 ```
 
 | Module | Depends on | Purpose |

@@ -24,7 +24,7 @@ public final class NettyMessageDecoder extends MessageToMessageDecoder<ByteBuf> 
     private final @NotNull MessageDirection direction;
 
     @Override
-    protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) throws Exception {
+    protected void decode(ChannelHandlerContext ctx, ByteBuf msg, List<Object> out) {
         byte[] bytes = new byte[msg.readableBytes()];
         msg.readBytes(bytes);
 

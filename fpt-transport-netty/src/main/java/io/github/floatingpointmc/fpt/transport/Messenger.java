@@ -18,7 +18,7 @@ public interface Messenger {
             }
 
             @Override
-            public void onMessage(@NotNull Message message, @NotNull Channel channel) {
+            public void onMessage(@NotNull Message message) {
 
             }
 
@@ -33,7 +33,7 @@ public interface Messenger {
 
     void onConnectionInactive(@NotNull Channel channel);
 
-    void onMessage(@NotNull Message message, @NotNull Channel channel);
+    void onMessage(@NotNull Message message);
 
     void send(@NotNull Message message);
 }

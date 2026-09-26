@@ -1,40 +1,55 @@
-package io.github.floatingpointmc.fpt.transport.netty;
+package io.github.floatingpointmc.fpt.server;
 
 import io.github.floatingpointmc.fpt.codec.VarInt;
 import io.github.floatingpointmc.fpt.protocol.*;
 import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
 import io.github.floatingpointmc.fpt.transport.Messenger;
+import io.github.floatingpointmc.fpt.transport.netty.NettyFrameDecoder;
+import io.github.floatingpointmc.fpt.transport.netty.NettyMessageDecoder;
+import io.github.floatingpointmc.fpt.transport.netty.NettyMessageEncoder;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class NettyServerTransport {
     private static final Logger LOGGER = Logger.getLogger(NettyServerTransport.class.getName());
 
+    @Getter
+    private final CopyOnWriteArraySet<Channel> channels = new CopyOnWriteArraySet<>();
+    @Getter
     private final Protocol protocol;
+    @Getter
     private final EventGroup eventGroup;
-    private final Messenger messenger;
+    @Getter
     private final boolean ownedEventGroup;
+    private final ArrayList<Messenger> messenger;
 
     private Channel serverChannel;
 
-    public NettyServerTransport(@NotNull Protocol protocol, @NotNull EventGroup eventGroup, boolean ownedEventGroup, Messenger messenger) {
+    public NettyServerTransport(@NotNull Protocol protocol, @NotNull EventGroup eventGroup,
+                                boolean ownedEventGroup, @NotNull List<Messenger> messenger) {
         this.protocol = protocol;
         this.eventGroup = eventGroup;
         this.ownedEventGroup = ownedEventGroup;
-        this.messenger = messenger;
+        this.messenger = new ArrayList<>(messenger);
     }
 
-    public int start(@NotNull String host, int port) throws InterruptedException {
+    public void start(@NotNull String host, int port) throws InterruptedException {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(eventGroup.bossGroup(), eventGroup.workerGroup())
                 .channel(NioServerSocketChannel.class)
@@ -54,9 +69,8 @@ public final class NettyServerTransport {
 
         ChannelFuture future = bootstrap.bind(host, port).sync();
         serverChannel = future.channel();
-        int actualPort = ((java.net.InetSocketAddress) serverChannel.localAddress()).getPort();
+        int actualPort = ((InetSocketAddress) serverChannel.localAddress()).getPort();
         LOGGER.info("FPT Server started on " + host + ":" + actualPort);
-        return actualPort;
     }
 
     public void stop() {
@@ -71,15 +85,18 @@ public final class NettyServerTransport {
 
     public int getActualPort() {
         if (serverChannel != null) {
-            return ((java.net.InetSocketAddress) serverChannel.localAddress()).getPort();
+            return ((InetSocketAddress) serverChannel.localAddress()).getPort();
         }
         return -1;
     }
 
-    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     static final class ServerHandshakeHandler extends ChannelInboundHandlerAdapter {
         private final Protocol protocol;
         private boolean handshakeDone = false;
+
+        ServerHandshakeHandler(Protocol protocol) {
+            this.protocol = protocol;
+        }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -87,8 +104,8 @@ public final class NettyServerTransport {
                 ctx.fireChannelRead(msg);
                 return;
             }
-            if (msg instanceof io.netty.buffer.ByteBuf) {
-                io.netty.buffer.ByteBuf buf = (io.netty.buffer.ByteBuf) msg;
+            if (msg instanceof ByteBuf) {
+                ByteBuf buf = (ByteBuf) msg;
                 try {
                     byte[] bytes = new byte[buf.readableBytes()];
                     buf.readBytes(bytes);
@@ -123,7 +140,7 @@ public final class NettyServerTransport {
                     ctx.writeAndFlush(Unpooled.wrappedBuffer(frame));
 
                     if (nioBuf.hasRemaining()) {
-                        io.netty.buffer.ByteBuf remaining = Unpooled.wrappedBuffer(bytes, nioBuf.position(), nioBuf.remaining());
+                        ByteBuf remaining = Unpooled.wrappedBuffer(bytes, nioBuf.position(), nioBuf.remaining());
                         ctx.fireChannelRead(remaining);
                     }
                 } catch (Exception e) {
@@ -140,22 +157,23 @@ public final class NettyServerTransport {
 
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     static final class ServerChannelHandler extends ChannelInboundHandlerAdapter {
-        private final @NotNull Messenger messenger;
+        private final ArrayList<Messenger> messenger;
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
-            messenger.onConnectionActive(ctx.channel());
+            messenger.forEach(m -> m.onConnectionActive(ctx.channel()));
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            messenger.onConnectionInactive(ctx.channel());
+            messenger.forEach(m -> m.onConnectionInactive(ctx.channel()));
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof Message) {
-                messenger.onMessage((Message) msg, ctx.channel());
+                Message message = (Message) msg;
+                messenger.forEach(m -> m.onMessage(message));
             } else {
                 ctx.fireChannelRead(msg);
             }

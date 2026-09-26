@@ -1,16 +1,20 @@
-package io.github.floatingpointmc.fpt.transport.netty;
+package io.github.floatingpointmc.fpt.client;
 
 import io.github.floatingpointmc.fpt.codec.VarInt;
 import io.github.floatingpointmc.fpt.protocol.*;
 import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
 import io.github.floatingpointmc.fpt.transport.Messenger;
+import io.github.floatingpointmc.fpt.transport.netty.NettyFrameDecoder;
+import io.github.floatingpointmc.fpt.transport.netty.NettyMessageDecoder;
+import io.github.floatingpointmc.fpt.transport.netty.NettyMessageEncoder;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,8 +31,11 @@ public final class NettyClientTransport {
 
     private static final long HANDSHAKE_TIMEOUT_SECONDS = 10;
 
+    @Getter
     private final @NotNull Protocol protocol;
+    @Getter
     private final @NotNull EventGroup eventGroup;
+    @Getter
     private final boolean ownedEventGroup;
     private final @NotNull Messenger messenger;
 
@@ -193,7 +200,7 @@ public final class NettyClientTransport {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof Message) {
-                messenger.onMessage((Message) msg, ctx.channel());
+                messenger.onMessage((Message) msg);
             } else {
                 ctx.fireChannelRead(msg);
             }

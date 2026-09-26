@@ -24,7 +24,7 @@ class HandshakeTest {
     }
 
     @Test
-    void handshakeMatch() {
+    void handshakeMatchesSameProtocol() {
         Protocol protocol = Protocol.create("test-app", 2);
         HandshakeMessage handshake = HandshakeCodec.fromProtocol(protocol);
         assertTrue(handshake.matches(protocol));
