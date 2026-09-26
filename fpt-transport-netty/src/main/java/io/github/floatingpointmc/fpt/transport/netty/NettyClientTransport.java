@@ -4,12 +4,13 @@ import io.github.floatingpointmc.fpt.codec.VarInt;
 import io.github.floatingpointmc.fpt.protocol.*;
 import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
-import io.github.floatingpointmc.fpt.transport.MessageListener;
+import io.github.floatingpointmc.fpt.transport.Messenger;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
@@ -29,7 +30,7 @@ public final class NettyClientTransport {
     private final @NotNull Protocol protocol;
     private final @NotNull EventGroup eventGroup;
     private final boolean ownedEventGroup;
-    private final @NotNull MessageListener messageListener;
+    private final @NotNull Messenger messenger;
 
     private Channel channel;
     private volatile boolean handshakeComplete = false;
@@ -49,7 +50,7 @@ public final class NettyClientTransport {
                         pipeline.addLast("handshake-handler", new ClientHandshakeHandler(protocol, handshakeLatch, handshakeError));
                         pipeline.addLast("s2c-decoder", new NettyMessageDecoder(protocol, MessageDirection.S2C));
                         pipeline.addLast("c2s-encoder", new NettyMessageEncoder(protocol));
-                        pipeline.addLast("handler", new ClientChannelHandler(messageListener));
+                        pipeline.addLast("handler", new ClientChannelHandler(messenger));
                     }
                 });
 
@@ -70,13 +71,8 @@ public final class NettyClientTransport {
         }
 
         handshakeComplete = true;
+        messenger.onConnectionActive(channel);
         LOGGER.info("Connected to " + host + ":" + port + " (handshake OK)");
-    }
-
-    public void send(@NotNull Message message) {
-        if (channel != null && channel.isActive() && handshakeComplete) {
-            channel.writeAndFlush(message);
-        }
     }
 
     public void disconnect() {
@@ -120,6 +116,7 @@ public final class NettyClientTransport {
             frame.flip();
 
             ctx.writeAndFlush(Unpooled.wrappedBuffer(frame));
+            ctx.fireChannelActive();
         }
 
         @Override
@@ -165,6 +162,13 @@ public final class NettyClientTransport {
         }
 
         @Override
+        public void channelInactive(ChannelHandlerContext ctx) {
+            error.compareAndSet(null, new RuntimeException("Connection closed before handshake completed"));
+            latch.countDown();
+            ctx.fireChannelInactive();
+        }
+
+        @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             error.compareAndSet(null, cause);
             latch.countDown();
@@ -172,12 +176,9 @@ public final class NettyClientTransport {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     static final class ClientChannelHandler extends ChannelInboundHandlerAdapter {
-        private final MessageListener messageListener;
-
-        ClientChannelHandler(MessageListener messageListener) {
-            this.messageListener = messageListener;
-        }
+        private final @NotNull Messenger messenger;
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
@@ -186,17 +187,13 @@ public final class NettyClientTransport {
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            if (messageListener != null) {
-                messageListener.onConnectionInactive(ctx.channel());
-            }
+            messenger.onConnectionInactive(ctx.channel());
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof Message) {
-                if (messageListener != null) {
-                    messageListener.onMessage((Message) msg, ctx.channel());
-                }
+                messenger.onMessage((Message) msg, ctx.channel());
             } else {
                 ctx.fireChannelRead(msg);
             }

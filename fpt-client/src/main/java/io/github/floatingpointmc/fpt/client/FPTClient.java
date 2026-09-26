@@ -1,9 +1,8 @@
 package io.github.floatingpointmc.fpt.client;
 
 import io.github.floatingpointmc.fpt.protocol.Protocol;
-import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
-import io.github.floatingpointmc.fpt.transport.MessageListener;
+import io.github.floatingpointmc.fpt.transport.Messenger;
 import io.github.floatingpointmc.fpt.transport.netty.NettyClientTransport;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
@@ -17,7 +16,7 @@ public final class FPTClient {
     @Getter
     private final int port;
 
-    private FPTClient(@NotNull String host, int port, @NotNull Protocol protocol, @NotNull EventGroup eventGroup, boolean ownedEventGroup, @NotNull MessageListener listener) {
+    private FPTClient(@NotNull String host, int port, @NotNull Protocol protocol, @NotNull EventGroup eventGroup, boolean ownedEventGroup, @NotNull Messenger listener) {
         this.host = host;
         this.port = port;
         this.transport = new NettyClientTransport(protocol, eventGroup, ownedEventGroup, listener);
@@ -29,12 +28,12 @@ public final class FPTClient {
 
     public static @NotNull FPTClient connect(@NotNull String host, int port, @NotNull Protocol protocol) {
         EventGroup eventGroup = EventGroup.nio();
-        FPTClient client = new FPTClient(host, port, protocol, eventGroup, true, MessageListener.empty());
+        FPTClient client = new FPTClient(host, port, protocol, eventGroup, true, Messenger.empty());
         client.doConnect();
         return client;
     }
 
-    public static @NotNull FPTClient connect(@NotNull String host, int port, @NotNull Protocol protocol, @NotNull EventGroup eventGroup, @NotNull MessageListener listener) {
+    public static @NotNull FPTClient connect(@NotNull String host, int port, @NotNull Protocol protocol, @NotNull EventGroup eventGroup, @NotNull Messenger listener) {
         FPTClient client = new FPTClient(host, port, protocol, eventGroup, false, listener);
         client.doConnect();
         return client;
@@ -47,10 +46,6 @@ public final class FPTClient {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Failed to connect", e);
         }
-    }
-
-    public void send(@NotNull Message message) {
-        transport.send(message);
     }
 
     public void disconnect() {

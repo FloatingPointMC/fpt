@@ -4,11 +4,13 @@ import io.github.floatingpointmc.fpt.codec.VarInt;
 import io.github.floatingpointmc.fpt.protocol.*;
 import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
-import io.github.floatingpointmc.fpt.transport.MessageListener;
+import io.github.floatingpointmc.fpt.transport.Messenger;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
@@ -16,21 +18,20 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class NettyServerTransport {
-
     private static final Logger LOGGER = Logger.getLogger(NettyServerTransport.class.getName());
 
     private final Protocol protocol;
     private final EventGroup eventGroup;
-    private final MessageListener messageListener;
+    private final Messenger messenger;
     private final boolean ownedEventGroup;
 
     private Channel serverChannel;
 
-    public NettyServerTransport(@NotNull Protocol protocol, @NotNull EventGroup eventGroup, boolean ownedEventGroup, MessageListener messageListener) {
+    public NettyServerTransport(@NotNull Protocol protocol, @NotNull EventGroup eventGroup, boolean ownedEventGroup, Messenger messenger) {
         this.protocol = protocol;
         this.eventGroup = eventGroup;
         this.ownedEventGroup = ownedEventGroup;
-        this.messageListener = messageListener;
+        this.messenger = messenger;
     }
 
     public int start(@NotNull String host, int port) throws InterruptedException {
@@ -45,7 +46,7 @@ public final class NettyServerTransport {
                         pipeline.addLast("handshake-handler", new ServerHandshakeHandler(protocol));
                         pipeline.addLast("c2s-decoder", new NettyMessageDecoder(protocol, MessageDirection.C2S));
                         pipeline.addLast("s2c-encoder", new NettyMessageEncoder(protocol));
-                        pipeline.addLast("handler", new ServerChannelHandler(protocol, messageListener));
+                        pipeline.addLast("handler", new ServerChannelHandler(messenger));
                     }
                 })
                 .option(ChannelOption.SO_BACKLOG, 128)
@@ -75,13 +76,10 @@ public final class NettyServerTransport {
         return -1;
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     static final class ServerHandshakeHandler extends ChannelInboundHandlerAdapter {
         private final Protocol protocol;
         private boolean handshakeDone = false;
-
-        ServerHandshakeHandler(Protocol protocol) {
-            this.protocol = protocol;
-        }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
@@ -140,35 +138,24 @@ public final class NettyServerTransport {
         }
     }
 
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     static final class ServerChannelHandler extends ChannelInboundHandlerAdapter {
-        private final Protocol protocol;
-        private final MessageListener messageListener;
-
-        ServerChannelHandler(Protocol protocol, MessageListener messageListener) {
-            this.protocol = protocol;
-            this.messageListener = messageListener;
-        }
+        private final @NotNull Messenger messenger;
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
-            if (messageListener != null) {
-                messageListener.onConnectionActive(ctx.channel());
-            }
+            messenger.onConnectionActive(ctx.channel());
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            if (messageListener != null) {
-                messageListener.onConnectionInactive(ctx.channel());
-            }
+            messenger.onConnectionInactive(ctx.channel());
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof Message) {
-                if (messageListener != null) {
-                    messageListener.onMessage((Message) msg, ctx.channel());
-                }
+                messenger.onMessage((Message) msg, ctx.channel());
             } else {
                 ctx.fireChannelRead(msg);
             }

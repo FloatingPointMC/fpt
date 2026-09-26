@@ -213,6 +213,12 @@ subprojects {
 
         compileOnly("org.jetbrains:annotations:26.1.0")
         annotationProcessor("org.jetbrains:annotations:26.1.0")
+
+        testCompileOnly("org.projectlombok:lombok:1.18.36")
+        testAnnotationProcessor("org.projectlombok:lombok:1.18.36")
+
+        testCompileOnly("org.jetbrains:annotations:26.1.0")
+        testAnnotationProcessor("org.jetbrains:annotations:26.1.0")
     }
 
     tasks.withType<Test> {

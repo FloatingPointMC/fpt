@@ -8,7 +8,6 @@ import java.nio.ByteBuffer;
 
 @UtilityClass
 public final class VarInt {
-
     private static final int SEGMENT_BITS = 0x7F;
     private static final int CONTINUE_BIT = 0x80;
 
@@ -45,15 +44,11 @@ public final class VarInt {
     ) {
         int encoded = encodeZigZag(value);
 
-        while (true) {
-            if ((encoded & ~SEGMENT_BITS) == 0) {
-                buffer.put((byte) encoded);
-                return;
-            }
-
+        while ((encoded & ~SEGMENT_BITS) != 0) {
             buffer.put((byte) ((encoded & SEGMENT_BITS) | CONTINUE_BIT));
             encoded >>>= 7;
         }
+        buffer.put((byte) encoded);
     }
 
     public static int varIntSize(int value) {

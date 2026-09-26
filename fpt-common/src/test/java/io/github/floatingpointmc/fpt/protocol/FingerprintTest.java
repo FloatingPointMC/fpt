@@ -1,16 +1,14 @@
 package io.github.floatingpointmc.fpt.protocol;
 
-import io.github.floatingpointmc.fpt.codec.Codec;
+import io.github.floatingpointmc.fpt.codec.CodecMap;
 import io.github.floatingpointmc.fpt.codec.Fixed32Codec;
 import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
 import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("unused")
 class FingerprintTest {
 
     static class MessageA implements C2SMessage {
@@ -69,13 +67,12 @@ class FingerprintTest {
     @Test
     void fingerprintCodecSensitivity() {
         Protocol base = Protocol.create();
-        Map<Class<?>, Codec<?>> customMap = new HashMap<Class<?>, Codec<?>>(base.codec());
+        CodecMap customMap = new CodecMap(base.codec());
         customMap.put(Integer.class, Fixed32Codec.INSTANCE);
 
-        Protocol varInt = base;
         Protocol fixed32 = base.codec(customMap);
 
-        assertNotEquals(varInt.getFingerprint(), fixed32.getFingerprint(),
+        assertNotEquals(base.getFingerprint(), fixed32.getFingerprint(),
                 "Different Integer codec must produce different fingerprint");
     }
 
@@ -99,7 +96,7 @@ class FingerprintTest {
         String hex1 = p.getFingerprint().hex();
         String hex2 = p.getFingerprint().hex();
         assertEquals(hex1, hex2);
-        assertTrue(hex1.length() > 0);
+        assertFalse(hex1.isEmpty());
     }
 
     @Test

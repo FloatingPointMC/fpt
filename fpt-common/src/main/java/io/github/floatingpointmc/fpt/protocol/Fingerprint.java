@@ -1,6 +1,7 @@
 package io.github.floatingpointmc.fpt.protocol;
 
 import io.github.floatingpointmc.fpt.codec.Codec;
+import io.github.floatingpointmc.fpt.codec.CodecMap;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
@@ -58,8 +59,8 @@ public final class Fingerprint {
     }
 
     static @NotNull Fingerprint compute(@NotNull String identifier, int version,
-                                         @NotNull MessageRegistry c2s, @NotNull MessageRegistry s2c,
-                                         @NotNull Map<Class<?>, Codec<?>> codecMap) {
+                                        @NotNull MessageRegistry c2s, @NotNull MessageRegistry s2c,
+                                        @NotNull CodecMap codecMap) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
 

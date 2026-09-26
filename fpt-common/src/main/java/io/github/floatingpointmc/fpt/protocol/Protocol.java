@@ -2,6 +2,7 @@ package io.github.floatingpointmc.fpt.protocol;
 
 import io.github.floatingpointmc.fpt.codec.AutoMessageCodec;
 import io.github.floatingpointmc.fpt.codec.Codec;
+import io.github.floatingpointmc.fpt.codec.CodecMap;
 import io.github.floatingpointmc.fpt.codec.MessageCodec;
 import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
@@ -23,14 +24,14 @@ public final class Protocol {
     private final int version;
     private final @NotNull MessageRegistry c2sRegistry;
     private final @NotNull MessageRegistry s2cRegistry;
-    private final @NotNull Map<Class<?>, Codec<?>> codecMap;
+    private final @NotNull CodecMap codecMap;
     private final @NotNull Map<Class<?>, MessageCodec<?>> c2sCodecs;
     private final @NotNull Map<Class<?>, MessageCodec<?>> s2cCodecs;
     private final @NotNull Fingerprint fingerprint;
 
     private Protocol(@NotNull String identifier, int version,
                      @NotNull MessageRegistry c2sRegistry, @NotNull MessageRegistry s2cRegistry,
-                     @NotNull Map<Class<?>, Codec<?>> codecMap,
+                     @NotNull CodecMap codecMap,
                      @NotNull Map<Class<?>, MessageCodec<?>> c2sCodecs,
                      @NotNull Map<Class<?>, MessageCodec<?>> s2cCodecs) {
         this.identifier = identifier;
@@ -46,7 +47,7 @@ public final class Protocol {
     public static @NotNull Protocol create() {
         return new Protocol(DEFAULT_IDENTIFIER, DEFAULT_VERSION,
                 new MessageRegistry(), new MessageRegistry(),
-                Codec.DEFAULT_CODEC,
+                Codec.defaultCodecMap(),
                 Collections.emptyMap(),
                 Collections.emptyMap());
     }
@@ -54,7 +55,7 @@ public final class Protocol {
     public static @NotNull Protocol create(@NotNull String identifier, int version) {
         return new Protocol(identifier, version,
                 new MessageRegistry(), new MessageRegistry(),
-                Codec.DEFAULT_CODEC,
+                Codec.defaultCodecMap(),
                 Collections.emptyMap(),
                 Collections.emptyMap());
     }
@@ -123,28 +124,28 @@ public final class Protocol {
         );
     }
 
-    public @NotNull Map<Class<?>, Codec<?>> codec() {
-        return codecMap;
+    public @NotNull CodecMap codec() {
+        return new CodecMap(codecMap);
     }
 
-    public @NotNull Protocol codec(@NotNull Map<Class<?>, Codec<?>> newCodecMap) {
-        Map<Class<?>, Codec<?>> immutable = Collections.unmodifiableMap(newCodecMap);
+    public @NotNull Protocol codec(@NotNull CodecMap newCodecMap) {
+        CodecMap copy = new CodecMap(newCodecMap);
 
-        Map<Class<?>, MessageCodec<?>> newC2sCodecs = applyNewCodec(immutable, c2sRegistry);
-        Map<Class<?>, MessageCodec<?>> newS2cCodecs = applyNewCodec(immutable, s2cRegistry);
+        Map<Class<?>, MessageCodec<?>> newC2sCodecs = applyNewCodec(copy, c2sRegistry);
+        Map<Class<?>, MessageCodec<?>> newS2cCodecs = applyNewCodec(copy, s2cRegistry);
 
-        return new Protocol(identifier, version, c2sRegistry, s2cRegistry, immutable,
+        return new Protocol(identifier, version, c2sRegistry, s2cRegistry, copy,
                 Collections.unmodifiableMap(newC2sCodecs),
                 Collections.unmodifiableMap(newS2cCodecs));
     }
 
-    private static Map<Class<?>, MessageCodec<?>> applyNewCodec(Map<Class<?>, Codec<?>> immutable, MessageRegistry c2sRegistry) {
-        Map<Class<?>, MessageCodec<?>> newC2sCodecs = new HashMap<>();
-        for (MessageRegistry.Entry entry : c2sRegistry.entries()) {
-            MessageCodec<?> msgCodec = AutoMessageCodec.create(entry.messageType(), immutable);
-            newC2sCodecs.put(entry.messageType(), msgCodec);
+    private static Map<Class<?>, MessageCodec<?>> applyNewCodec(CodecMap codecMap, MessageRegistry registry) {
+        Map<Class<?>, MessageCodec<?>> newRegistry = new HashMap<>();
+        for (MessageRegistry.Entry entry : registry.entries()) {
+            MessageCodec<?> msgCodec = AutoMessageCodec.create(entry.messageType(), codecMap);
+            newRegistry.put(entry.messageType(), msgCodec);
         }
-        return newC2sCodecs;
+        return newRegistry;
     }
 
     @SuppressWarnings("unchecked")

@@ -374,7 +374,7 @@ EventGroup is runtime configuration, not part of the protocol definition.
 
 ## MessageListener
 
-`MessageListener` receives connection lifecycle events and incoming messages:
+`Messenger` receives connection lifecycle events and incoming messages:
 
 ```java
 public interface MessageListener {

@@ -5,9 +5,7 @@ import io.github.floatingpointmc.fpt.codec.exceptions.EncodeException;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.UUID;
 
 public abstract class Codec<T> {
     private final @NotNull String identity;
@@ -67,7 +65,7 @@ public abstract class Codec<T> {
 
     private static final Codec<Integer> INTEGER = new Codec<Integer>("fpt:int:varint32") {
         @Override
-        public void encode(@NotNull ByteBuffer buf, Integer value) throws EncodeException {
+        public void encode(@NotNull ByteBuffer buf, Integer value) {
             VarInt.writeVarInt(buf, value);
         }
 
@@ -79,7 +77,7 @@ public abstract class Codec<T> {
 
     private static final Codec<Long> LONG = new Codec<Long>("fpt:long:varlong64") {
         @Override
-        public void encode(@NotNull ByteBuffer buf, Long value) throws EncodeException {
+        public void encode(@NotNull ByteBuffer buf, Long value) {
             VarLong.writeVarLong(buf, value);
         }
 
@@ -154,18 +152,18 @@ public abstract class Codec<T> {
         }
     };
 
-    private static final Codec<java.util.UUID> UUID = new Codec<java.util.UUID>("fpt:uuid:128") {
+    private static final Codec<UUID> UUID = new Codec<UUID>("fpt:uuid:128") {
         @Override
-        public void encode(@NotNull ByteBuffer buf, java.util.UUID value) {
+        public void encode(@NotNull ByteBuffer buf, UUID value) {
             buf.putLong(value.getMostSignificantBits());
             buf.putLong(value.getLeastSignificantBits());
         }
 
         @Override
-        public java.util.UUID decode(@NotNull ByteBuffer buf) {
+        public UUID decode(@NotNull ByteBuffer buf) {
             long msb = buf.getLong();
             long lsb = buf.getLong();
-            return new java.util.UUID(msb, lsb);
+            return new UUID(msb, lsb);
         }
     };
 
@@ -197,73 +195,76 @@ public abstract class Codec<T> {
         }
     };
 
-    public static final Map<Class<?>, Codec<?>> DEFAULT_CODEC;
+    private static final CodecMap DEFAULT_CODEC;
 
     static {
-        Map<Class<?>, Codec<?>> map = new LinkedHashMap<>();
-        map.put(Boolean.class, BOOLEAN);
-        map.put(boolean.class, BOOLEAN);
-        map.put(Byte.class, BYTE);
-        map.put(byte.class, BYTE);
-        map.put(Short.class, SHORT);
-        map.put(short.class, SHORT);
-        map.put(Integer.class, INTEGER);
-        map.put(int.class, INTEGER);
-        map.put(Long.class, LONG);
-        map.put(long.class, LONG);
-        map.put(Float.class, FLOAT);
-        map.put(float.class, FLOAT);
-        map.put(Double.class, DOUBLE);
-        map.put(double.class, DOUBLE);
-        map.put(Character.class, CHARACTER);
-        map.put(char.class, CHARACTER);
-        map.put(String.class, STRING);
-        map.put(java.util.UUID.class, UUID);
-        map.put(byte[].class, BYTE_ARRAY);
-        DEFAULT_CODEC = Collections.unmodifiableMap(map);
+        DEFAULT_CODEC = CodecMap.create()
+                .put(Boolean.class, BOOLEAN)
+                .put(boolean.class, BOOLEAN)
+                .put(Byte.class, BYTE)
+                .put(byte.class, BYTE)
+                .put(Short.class, SHORT)
+                .put(short.class, SHORT)
+                .put(Integer.class, INTEGER)
+                .put(int.class, INTEGER)
+                .put(Long.class, LONG)
+                .put(long.class, LONG)
+                .put(Float.class, FLOAT)
+                .put(float.class, FLOAT)
+                .put(Double.class, DOUBLE)
+                .put(double.class, DOUBLE)
+                .put(Character.class, CHARACTER)
+                .put(char.class, CHARACTER)
+                .put(String.class, STRING)
+                .put(java.util.UUID.class, UUID)
+                .put(byte[].class, BYTE_ARRAY);
     }
 
-    public static @NotNull Codec<?> booleanCodec() {
+    public static CodecMap defaultCodecMap() {
+        return new CodecMap(DEFAULT_CODEC);
+    }
+
+    public static @NotNull Codec<Boolean> booleanCodec() {
         return BOOLEAN;
     }
 
-    public static @NotNull Codec<?> byteCodec() {
+    public static @NotNull Codec<Byte> byteCodec() {
         return BYTE;
     }
 
-    public static @NotNull Codec<?> shortCodec() {
+    public static @NotNull Codec<Short> shortCodec() {
         return SHORT;
     }
 
-    public static @NotNull Codec<?> integerCodec() {
+    public static @NotNull Codec<Integer> integerCodec() {
         return INTEGER;
     }
 
-    public static @NotNull Codec<?> longCodec() {
+    public static @NotNull Codec<Long> longCodec() {
         return LONG;
     }
 
-    public static @NotNull Codec<?> floatCodec() {
+    public static @NotNull Codec<Float> floatCodec() {
         return FLOAT;
     }
 
-    public static @NotNull Codec<?> doubleCodec() {
+    public static @NotNull Codec<Double> doubleCodec() {
         return DOUBLE;
     }
 
-    public static @NotNull Codec<?> characterCodec() {
+    public static @NotNull Codec<Character> characterCodec() {
         return CHARACTER;
     }
 
-    public static @NotNull Codec<?> stringCodec() {
+    public static @NotNull Codec<String> stringCodec() {
         return STRING;
     }
 
-    public static @NotNull Codec<?> uuidCodec() {
+    public static @NotNull Codec<UUID> uuidCodec() {
         return UUID;
     }
 
-    public static @NotNull Codec<?> byteArrayCodec() {
+    public static @NotNull Codec<byte[]> byteArrayCodec() {
         return BYTE_ARRAY;
     }
 

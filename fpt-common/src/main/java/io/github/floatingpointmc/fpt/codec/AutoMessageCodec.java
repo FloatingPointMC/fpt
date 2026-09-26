@@ -12,16 +12,15 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 @UtilityClass
 public final class AutoMessageCodec {
-    public static <T extends Message> @NotNull MessageCodec<T> create(@NotNull Class<T> messageType, @NotNull Map<Class<?>, Codec<?>> codecMap) {
+    public static <T extends Message> @NotNull MessageCodec<T> create(@NotNull Class<T> messageType, @NotNull CodecMap codecMap) {
         List<FieldInfo> fields = collectFields(messageType, codecMap);
         return new ReflectionMessageCodec<>(messageType, fields);
     }
 
-    private static List<FieldInfo> collectFields(@NotNull Class<?> messageType, @NotNull Map<Class<?>, Codec<?>> codecMap) {
+    private static List<FieldInfo> collectFields(@NotNull Class<?> messageType, @NotNull CodecMap codecMap) {
         List<FieldInfo> fields = new ArrayList<>();
         Class<?> current = messageType;
         List<Class<?>> hierarchy = new ArrayList<>();

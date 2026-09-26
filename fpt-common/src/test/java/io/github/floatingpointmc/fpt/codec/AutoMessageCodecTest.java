@@ -5,12 +5,12 @@ import io.github.floatingpointmc.fpt.protocol.Protocol;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("unused")
 class AutoMessageCodecTest {
 
     public static class TestMessage implements C2SMessage {
@@ -51,7 +51,7 @@ class AutoMessageCodecTest {
     void automaticCodecUsesCurrentProtocolCodecMap() throws Exception {
         Protocol varIntProtocol = Protocol.create().registerC2S(SimpleMessage.class);
 
-        Map<Class<?>, Codec<?>> fixedMap = new HashMap<>(Protocol.create().codec());
+        CodecMap fixedMap = new CodecMap(Protocol.create().codec());
         fixedMap.put(Integer.class, Fixed32Codec.INSTANCE);
         Protocol fixed32Protocol = Protocol.create().codec(fixedMap).registerC2S(SimpleMessage.class);
 
@@ -81,16 +81,14 @@ class AutoMessageCodecTest {
 
     @Test
     void unsupportedFieldEarlyFailure() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            Protocol.create().registerC2S(BadMessage.class);
-        });
+        assertThrows(IllegalArgumentException.class, () -> Protocol.create().registerC2S(BadMessage.class));
     }
 
     @Test
     void codecOverrideDoesNotAffectDefaultProtocol() throws Exception {
         Protocol varIntDefault = Protocol.create().registerC2S(SimpleMessage.class);
 
-        Map<Class<?>, Codec<?>> fixedMap = new HashMap<>(Protocol.create().codec());
+        CodecMap fixedMap = Codec.defaultCodecMap();
         fixedMap.put(Integer.class, Fixed32Codec.INSTANCE);
         Protocol customBase = Protocol.create().codec(fixedMap);
         Protocol fixed32Custom = customBase.registerC2S(SimpleMessage.class);
@@ -114,7 +112,7 @@ class AutoMessageCodecTest {
         SimpleMessage decodedCustom = customCodec.decode(customBuf);
         assertEquals(100, decodedCustom.value);
 
-        assertEquals("fpt:int:varint32", varIntDefault.codec().get(Integer.class).identity());
-        assertEquals("fpt:int:fixed32", fixed32Custom.codec().get(Integer.class).identity());
+        assertEquals("fpt:int:varint32", Objects.requireNonNull(varIntDefault.codec().get(Integer.class)).identity());
+        assertEquals("fpt:int:fixed32", Objects.requireNonNull(fixed32Custom.codec().get(Integer.class)).identity());
     }
 }

@@ -44,7 +44,7 @@ public final class MessageCoder {
         int lengthSize = VarInt.varIntSize(payloadLength);
         byte[] packet = new byte[lengthSize + payloadLength];
 
-        writeVarIntToArray(packet, 0, payloadLength);
+        writeVarIntToArray(packet, payloadLength);
         payloadBuffer.get(packet, lengthSize, payloadLength);
 
         return packet;
@@ -70,15 +70,16 @@ public final class MessageCoder {
         }
     }
 
-    private static void writeVarIntToArray(byte[] data, int offset, int value) {
-        int index = offset;
+    private static void writeVarIntToArray(byte[] data, int value) {
+        int encoded = (value << 1) ^ (value >> 31);
+        int index = 0;
         while (true) {
-            if ((value & ~0x7F) == 0) {
-                data[index] = (byte) value;
+            if ((encoded & ~0x7F) == 0) {
+                data[index] = (byte) encoded;
                 return;
             }
-            data[index] = (byte) ((value & 0x7F) | 0x80);
-            value >>>= 7;
+            data[index] = (byte) ((encoded & 0x7F) | 0x80);
+            encoded >>>= 7;
             index++;
         }
     }

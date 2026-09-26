@@ -1,16 +1,16 @@
 package io.github.floatingpointmc.fpt.protocol;
 
-import io.github.floatingpointmc.fpt.codec.Codec;
+import io.github.floatingpointmc.fpt.codec.CodecMap;
 import io.github.floatingpointmc.fpt.codec.Fixed32Codec;
 import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
 import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("unused")
 class ProtocolTest {
 
     public static class MessageA implements C2SMessage {
@@ -58,22 +58,15 @@ class ProtocolTest {
     }
 
     @Test
-    void codecMapIsImmutable() {
-        Protocol protocol = Protocol.create();
-        Map<Class<?>, Codec<?>> codecMap = protocol.codec();
-        assertThrows(UnsupportedOperationException.class, () -> {
-            codecMap.put(Integer.class, Fixed32Codec.INSTANCE);
-        });
-    }
-
-    @Test
     void codecMapSnapshot() {
         Protocol base = Protocol.create();
-        Map<Class<?>, Codec<?>> map = new HashMap<Class<?>, Codec<?>>(base.codec());
+        CodecMap map = new CodecMap(base.codec());
         map.put(Integer.class, Fixed32Codec.INSTANCE);
 
         Protocol custom = base.codec(map);
-        map.clear();
+        CodecMap originalCodec = base.codec();
+        assertNotNull(originalCodec.get(Integer.class));
+        map.put(Integer.class, Objects.requireNonNull(originalCodec.get(Integer.class)));
 
         assertSame(Fixed32Codec.INSTANCE, custom.codec().get(Integer.class));
     }
@@ -108,12 +101,12 @@ class ProtocolTest {
 
     @Test
     void codecOverrideDoesNotAffectDefault() {
-        Map<Class<?>, Codec<?>> map = new HashMap<Class<?>, Codec<?>>(Protocol.create().codec());
+        CodecMap map = new CodecMap(Protocol.create().codec());
         map.put(Integer.class, Fixed32Codec.INSTANCE);
         Protocol custom = Protocol.create().codec(map);
 
-        assertEquals("fpt:int:varint32", Protocol.create().codec().get(Integer.class).identity());
-        assertEquals("fpt:int:fixed32", custom.codec().get(Integer.class).identity());
+        assertEquals("fpt:int:varint32", Objects.requireNonNull(Protocol.create().codec().get(Integer.class)).identity());
+        assertEquals("fpt:int:fixed32", Objects.requireNonNull(custom.codec().get(Integer.class)).identity());
     }
 
     @Test

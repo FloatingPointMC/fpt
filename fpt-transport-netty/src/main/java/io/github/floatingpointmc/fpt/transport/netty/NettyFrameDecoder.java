@@ -52,13 +52,17 @@ public final class NettyFrameDecoder extends ByteToMessageDecoder {
             byte currentByte = buf.readByte();
             value |= (currentByte & 0x7F) << position;
             if ((currentByte & 0x80) == 0) {
-                return new VarIntResult(true, value);
+                return new VarIntResult(true, decodeZigZag(value));
             }
             position += 7;
             if (position >= 32) {
                 throw new IllegalArgumentException("VarInt too big");
             }
         }
+    }
+
+    private static int decodeZigZag(int value) {
+        return (value >>> 1) ^ -(value & 1);
     }
 
     private static final class VarIntResult {

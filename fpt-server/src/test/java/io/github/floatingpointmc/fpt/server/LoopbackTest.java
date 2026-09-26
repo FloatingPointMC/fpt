@@ -1,21 +1,21 @@
 package io.github.floatingpointmc.fpt.server;
 
-import com.sun.istack.internal.NotNull;
 import io.github.floatingpointmc.fpt.client.FPTClient;
-import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
-import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
+import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
 import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
+import io.github.floatingpointmc.fpt.transport.AbstractMessenger;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
-import io.github.floatingpointmc.fpt.transport.MessageListener;
+import io.github.floatingpointmc.fpt.transport.Messenger;
 import io.netty.channel.Channel;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -25,6 +25,7 @@ class LoopbackTest {
         public String text;
     }
 
+    @SuppressWarnings("unused")
     public static class ChatResponse implements S2CMessage {
         public String text;
     }
@@ -38,8 +39,8 @@ class LoopbackTest {
     }
 
     @Test
-    void clientConnectsAndDisconnects() throws Exception {
-        FPTServer server = FPTServer.run("127.0.0.1", 0);
+    void clientConnectsAndDisconnects() {
+        FPTServer server = FPTServer.run("0.0.0.0", 0);
         int port = server.getPort();
         try {
             FPTClient client = FPTClient.connect("127.0.0.1", port);
@@ -59,23 +60,29 @@ class LoopbackTest {
 
         final List<Message> receivedOnServer = new ArrayList<>();
         final CountDownLatch serverReceived = new CountDownLatch(1);
-        MessageListener serverListener = getServerListener(receivedOnServer, serverReceived);
+        Messenger serverListener = getServerListener(receivedOnServer, serverReceived);
 
         EventGroup serverEventGroup = EventGroup.nio();
         FPTServer server = FPTServer.run("127.0.0.1", 0, protocol, serverEventGroup, serverListener);
         int port = server.getPort();
 
         try {
-            FPTClient client = FPTClient.connect("127.0.0.1", port, protocol);
+            Messenger messenger = new AbstractMessenger() {
+                @Override
+                public void onMessage(@NotNull Message message, @NotNull Channel channel) {
+
+                }
+            };
+            FPTClient client = FPTClient.connect("127.0.0.1", port, protocol, EventGroup.nio(), messenger);
             assertTrue(client.isConnected());
 
             ChatMessage msg = new ChatMessage();
             msg.text = "hello";
-            client.send(msg);
+            messenger.send(msg);
 
             assertTrue(serverReceived.await(5, TimeUnit.SECONDS), "Server should receive message");
             assertEquals(1, receivedOnServer.size());
-            assertTrue(receivedOnServer.get(0) instanceof ChatMessage);
+            assertInstanceOf(ChatMessage.class, receivedOnServer.get(0));
             assertEquals("hello", ((ChatMessage) receivedOnServer.get(0)).text);
 
             client.disconnect();
@@ -84,13 +91,10 @@ class LoopbackTest {
         }
     }
 
-    private static MessageListener getServerListener(List<Message> receivedOnServer, CountDownLatch serverReceived) {
-        final AtomicReference<Channel> serverChannel = new AtomicReference<>();
-
-        return new MessageListener() {
+    private static Messenger getServerListener(List<Message> receivedOnServer, CountDownLatch serverReceived) {
+        return new Messenger() {
             @Override
             public void onConnectionActive(@NotNull Channel channel) {
-                serverChannel.set(channel);
             }
 
             @Override
@@ -102,11 +106,16 @@ class LoopbackTest {
                 receivedOnServer.add(message);
                 serverReceived.countDown();
             }
+
+            @Override
+            public void send(@NotNull Message message) {
+
+            }
         };
     }
 
     @Test
-    void handshakeMismatchDisconnects() throws Exception {
+    void handshakeMismatchDisconnects() {
         Protocol serverProtocol = Protocol.create()
                 .registerC2S(ChatMessage.class);
 
@@ -116,16 +125,14 @@ class LoopbackTest {
         int port = server.getPort();
 
         try {
-            assertThrows(RuntimeException.class, () -> {
-                FPTClient.connect("127.0.0.1", port, clientProtocol);
-            });
+            assertThrows(RuntimeException.class, () -> FPTClient.connect("127.0.0.1", port, clientProtocol));
         } finally {
             server.stop();
         }
     }
 
     @Test
-    void defaultProtocolAPI() throws Exception {
+    void defaultProtocolAPI() {
         FPTServer server = FPTServer.run("127.0.0.1", 0);
         int port = server.getPort();
         try {

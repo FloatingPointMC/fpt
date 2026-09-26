@@ -3,6 +3,7 @@ package io.github.floatingpointmc.fpt.codec;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,10 +11,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class CodecTest {
 
     @Test
-    void defaultCodecIsImmutable() {
-        assertThrows(UnsupportedOperationException.class, () -> {
-            Codec.DEFAULT_CODEC.put(Integer.class, Codec.integerCodec());
-        });
+    void defaultCodecMapIsIndependentCopy() {
+        CodecMap map1 = Codec.defaultCodecMap();
+        CodecMap map2 = Codec.defaultCodecMap();
+        map1.put(Integer.class, Fixed32Codec.INSTANCE);
+        assertNotSame(map1, map2);
+        assertSame(Codec.integerCodec().identity(), Objects.requireNonNull(map2.get(Integer.class)).identity());
     }
 
     @Test
@@ -66,8 +69,8 @@ class CodecTest {
     void longVarLong() throws Exception {
         long[] values = {0L, 1L, -1L, Long.MAX_VALUE, Long.MIN_VALUE};
         for (long val : values) {
-            ByteBuffer buf = ByteBuffer.allocate(32);
-            Codec<Long> codec = cast(Codec.longCodec());
+            ByteBuffer buf = ByteBuffer.allocate(80);
+            Codec<Long> codec = Codec.longCodec();
             codec.encode(buf, val);
             buf.flip();
             long decoded = codec.decode(buf);
@@ -78,7 +81,7 @@ class CodecTest {
     @Test
     void floatCodec() throws Exception {
         ByteBuffer buf = ByteBuffer.allocate(16);
-        Codec<Float> codec = cast(Codec.floatCodec());
+        Codec<Float> codec = Codec.floatCodec();
         codec.encode(buf, 3.14f);
         buf.flip();
         assertEquals(3.14f, codec.decode(buf), 0.0f);

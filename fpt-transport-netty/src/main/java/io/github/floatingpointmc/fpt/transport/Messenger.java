@@ -4,9 +4,9 @@ import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.netty.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 
-public interface MessageListener {
-    static @NotNull MessageListener empty() {
-        return new MessageListener() {
+public interface Messenger {
+    static @NotNull Messenger empty() {
+        return new Messenger() {
             @Override
             public void onConnectionActive(@NotNull Channel channel) {
 
@@ -21,6 +21,11 @@ public interface MessageListener {
             public void onMessage(@NotNull Message message, @NotNull Channel channel) {
 
             }
+
+            @Override
+            public void send(@NotNull Message message) {
+
+            }
         };
     }
 
@@ -29,4 +34,6 @@ public interface MessageListener {
     void onConnectionInactive(@NotNull Channel channel);
 
     void onMessage(@NotNull Message message, @NotNull Channel channel);
+
+    void send(@NotNull Message message);
 }
