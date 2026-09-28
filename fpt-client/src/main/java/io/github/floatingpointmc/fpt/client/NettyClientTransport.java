@@ -3,8 +3,8 @@ package io.github.floatingpointmc.fpt.client;
 import io.github.floatingpointmc.fpt.codec.VarInt;
 import io.github.floatingpointmc.fpt.protocol.*;
 import io.github.floatingpointmc.fpt.protocol.message.Message;
+import io.github.floatingpointmc.fpt.transport.Connection;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
-import io.github.floatingpointmc.fpt.transport.Messenger;
 import io.github.floatingpointmc.fpt.transport.netty.NettyFrameDecoder;
 import io.github.floatingpointmc.fpt.transport.netty.NettyMessageDecoder;
 import io.github.floatingpointmc.fpt.transport.netty.NettyMessageEncoder;
@@ -18,14 +18,15 @@ import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@RequiredArgsConstructor
-public final class NettyClientTransport {
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
+final class NettyClientTransport {
     private static final Logger LOGGER = Logger.getLogger(NettyClientTransport.class.getName());
 
     private static final long HANDSHAKE_TIMEOUT_SECONDS = 10;
@@ -33,12 +34,10 @@ public final class NettyClientTransport {
     private final @NotNull Protocol protocol;
     private final @NotNull EventGroup eventGroup;
     private final boolean ownedEventGroup;
-    private final @NotNull Messenger messenger;
+    private final @NotNull List<ClientHandler> handler;
+    private FPTClient client;
 
-    private Channel channel;
-    private volatile boolean handshakeComplete = false;
-
-    public void connect(@NotNull String host, int port) throws InterruptedException {
+    public FPTClient connect(@NotNull String host, int port) throws InterruptedException {
         CountDownLatch handshakeLatch = new CountDownLatch(1);
         AtomicReference<Throwable> handshakeError = new AtomicReference<>();
 
@@ -53,44 +52,28 @@ public final class NettyClientTransport {
                         pipeline.addLast("handshake-handler", new ClientHandshakeHandler(protocol, handshakeLatch, handshakeError));
                         pipeline.addLast("s2c-decoder", new NettyMessageDecoder(protocol, MessageDirection.S2C));
                         pipeline.addLast("c2s-encoder", new NettyMessageEncoder(protocol));
-                        pipeline.addLast("handler", new ClientChannelHandler(messenger));
+                        pipeline.addLast("handler", new ClientChannelHandler(handler));
                     }
                 });
 
         ChannelFuture future = bootstrap.connect(host, port).sync();
-        channel = future.channel();
+        Channel clientChannel = future.channel();
 
         if (!handshakeLatch.await(HANDSHAKE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-            channel.close();
+            clientChannel.close();
             if (ownedEventGroup) eventGroup.close();
             throw new RuntimeException("Handshake timeout");
         }
 
         Throwable error = handshakeError.get();
         if (error != null) {
-            channel.close();
+            clientChannel.close();
             if (ownedEventGroup) eventGroup.close();
             throw new RuntimeException("Handshake failed", error);
         }
-
-        handshakeComplete = true;
-        messenger.onConnectionActive(channel);
+        Connection connection = new ServerConnection(clientChannel, clientChannel.remoteAddress(), clientChannel.localAddress());
         LOGGER.info("Connected to " + host + ":" + port + " (handshake OK)");
-    }
-
-    public void disconnect() {
-        if (channel != null) {
-            channel.close().awaitUninterruptibly();
-        }
-        if (ownedEventGroup) {
-            eventGroup.close();
-        }
-        handshakeComplete = false;
-        LOGGER.info("Disconnected");
-    }
-
-    public boolean isConnected() {
-        return channel != null && channel.isActive() && handshakeComplete;
+        return client = new FPTClient(clientChannel, connection, eventGroup, ownedEventGroup);
     }
 
     static final class ClientHandshakeHandler extends ChannelInboundHandlerAdapter {
@@ -180,27 +163,32 @@ public final class NettyClientTransport {
     }
 
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-    static final class ClientChannelHandler extends ChannelInboundHandlerAdapter {
-        private final @NotNull Messenger messenger;
+    final class ClientChannelHandler extends ChannelInboundHandlerAdapter {
+        private final List<ClientHandler> handlers;
+        private ServerConnection connection;
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
-            LOGGER.info("Channel active: " + ctx.channel().remoteAddress());
+            connection = new ServerConnection(ctx.channel(), ctx.channel().remoteAddress(), ctx.channel().localAddress());
+            handlers.forEach(m -> m.onConnectionActive(client, connection));
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            messenger.onConnectionInactive(ctx.channel());
+            handlers.forEach(m -> m.onConnectionInactive(client, connection));
+            connection.close();
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof Message) {
-                messenger.onMessage((Message) msg);
+                Message message = (Message) msg;
+                handlers.forEach(m -> m.onMessage(client, connection, message));
             } else {
                 ctx.fireChannelRead(msg);
             }
         }
+
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {

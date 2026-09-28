@@ -1,13 +1,12 @@
 package io.github.floatingpointmc.fpt.server;
 
+import io.github.floatingpointmc.fpt.client.FPTClientFactory;
 import io.github.floatingpointmc.fpt.client.FPTClient;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
 import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.protocol.message.impl.C2SMessage;
 import io.github.floatingpointmc.fpt.protocol.message.impl.S2CMessage;
-import io.github.floatingpointmc.fpt.transport.AbstractMessenger;
-import io.github.floatingpointmc.fpt.transport.Messenger;
-import io.netty.channel.Channel;
+import io.github.floatingpointmc.fpt.transport.Connection;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
@@ -31,12 +30,10 @@ class LoopbackTest {
 
     @Test
     void clientConnectsAndDisconnects() {
-        FPTServer server = FPTServer.create("0.0.0.0", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0).run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port);
-            client.connect();
+            FPTClient client = FPTClientFactory.create("127.0.0.1", port).connect();
             assertTrue(client.isConnected());
             client.disconnect();
             assertFalse(client.isConnected());
@@ -47,12 +44,10 @@ class LoopbackTest {
 
     @Test
     void defaultProtocolConnection() {
-        FPTServer server = FPTServer.create("0.0.0.0", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0).run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port);
-            client.connect();
+            FPTClient client = FPTClientFactory.create("127.0.0.1", port).connect();
             assertTrue(client.isConnected());
             client.disconnect();
         } finally {
@@ -69,46 +64,36 @@ class LoopbackTest {
         List<Message> receivedOnServer = new ArrayList<>();
         CountDownLatch serverReceived = new CountDownLatch(1);
 
-        Messenger serverMessenger = new Messenger() {
+        ServerHandler serverHandler = new ServerHandler() {
             @Override
-            public void onConnectionActive(@NotNull Channel channel) {
+            public void onConnectionActive(@NotNull FPTServer server, @NotNull Connection connection) {
+
             }
 
             @Override
-            public void onConnectionInactive(@NotNull Channel channel) {
+            public void onConnectionInactive(@NotNull FPTServer server, @NotNull Connection connection) {
+
             }
 
             @Override
-            public void onMessage(@NotNull Message message) {
+            public void onMessage(@NotNull FPTServer server, @NotNull Connection connection, @NotNull Message message) {
                 receivedOnServer.add(message);
                 serverReceived.countDown();
             }
-
-            @Override
-            public void send(@NotNull Message message) {
-            }
         };
 
-        FPTServer server = FPTServer.create("127.0.0.1", 0, protocol);
-        server.messenger(serverMessenger);
-        server.run();
+        FPTServer server = FPTServerFactory.create("127.0.0.1", 0, protocol)
+                .handler(serverHandler)
+                .run();
         int port = server.getPort();
 
         try {
-            AbstractMessenger clientMessenger = new AbstractMessenger() {
-                @Override
-                public void onMessage(@NotNull Message message) {
-                }
-            };
-
-            FPTClient client = FPTClient.create("127.0.0.1", port, protocol);
-            client.messenger(clientMessenger);
-            client.connect();
+            FPTClient client = FPTClientFactory.create("127.0.0.1", port, protocol).connect();
             assertTrue(client.isConnected());
 
             ChatMessage msg = new ChatMessage();
             msg.text = "hello";
-            clientMessenger.send(msg);
+            client.getConnection().send(msg);
 
             assertTrue(serverReceived.await(5, TimeUnit.SECONDS), "Server should receive message");
             assertEquals(1, receivedOnServer.size());
@@ -128,12 +113,11 @@ class LoopbackTest {
 
         Protocol clientProtocol = Protocol.create();
 
-        FPTServer server = FPTServer.create("127.0.0.1", 0, serverProtocol);
-        server.run();
+        FPTServer server = FPTServerFactory.create("127.0.0.1", 0, serverProtocol).run();
         int port = server.getPort();
 
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port, clientProtocol);
+            FPTClientFactory client = FPTClientFactory.create("127.0.0.1", port, clientProtocol);
             assertThrows(RuntimeException.class, client::connect);
         } finally {
             server.stop();
@@ -142,16 +126,14 @@ class LoopbackTest {
 
     @Test
     void multipleClientsConnectAndDisconnect() {
-        FPTServer server = FPTServer.create("0.0.0.0", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0).run();
         int port = server.getPort();
 
         try {
             int clientCount = 3;
             List<FPTClient> clients = new ArrayList<>();
             for (int i = 0; i < clientCount; i++) {
-                FPTClient client = FPTClient.create("127.0.0.1", port);
-                client.connect();
+                FPTClient client = FPTClientFactory.create("127.0.0.1", port).connect();
                 assertTrue(client.isConnected());
                 clients.add(client);
             }

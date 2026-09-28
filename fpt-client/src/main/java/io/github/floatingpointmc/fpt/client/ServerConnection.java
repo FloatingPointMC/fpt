@@ -1,4 +1,4 @@
-package io.github.floatingpointmc.fpt.server;
+package io.github.floatingpointmc.fpt.client;
 
 import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.Connection;
@@ -10,9 +10,9 @@ import org.jetbrains.annotations.NotNull;
 import java.net.SocketAddress;
 
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
-public final class ClientConnection implements Connection {
+public final class ServerConnection implements Connection {
     private final @NotNull Channel channel;
-    private final @NotNull SocketAddress client, local;
+    private final @NotNull SocketAddress server, local;
 
     @Override
     public boolean isActive() {
@@ -22,7 +22,7 @@ public final class ClientConnection implements Connection {
     @Override
     public void send(@NotNull Message message) throws IllegalStateException {
         if (!isActive()) {
-            throw new IllegalStateException("ClientConnection is closed");
+            throw new IllegalStateException("Connection is not active");
         }
         channel.writeAndFlush(message);
     }
@@ -34,7 +34,7 @@ public final class ClientConnection implements Connection {
 
     @Override
     public @NotNull SocketAddress getRemoteAddress() {
-        return client;
+        return server;
     }
 
     @Override

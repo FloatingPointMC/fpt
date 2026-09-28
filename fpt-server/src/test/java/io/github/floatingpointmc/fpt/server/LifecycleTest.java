@@ -1,9 +1,13 @@
 package io.github.floatingpointmc.fpt.server;
 
+import io.github.floatingpointmc.fpt.client.ClientHandler;
+import io.github.floatingpointmc.fpt.client.FPTClientFactory;
 import io.github.floatingpointmc.fpt.client.FPTClient;
 import io.github.floatingpointmc.fpt.protocol.Protocol;
+import io.github.floatingpointmc.fpt.protocol.message.Message;
+import io.github.floatingpointmc.fpt.transport.Connection;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
-import io.github.floatingpointmc.fpt.transport.Messenger;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -12,9 +16,7 @@ class LifecycleTest {
 
     @Test
     void serverCreateThenRun() {
-        FPTServer server = FPTServer.create("127.0.0.1", 0);
-        assertFalse(server.isRunning());
-        server.run();
+        FPTServer server = FPTServerFactory.create("127.0.0.1", 0).run();
         assertTrue(server.isRunning());
         assertTrue(server.getPort() > 0);
         server.stop();
@@ -23,39 +25,68 @@ class LifecycleTest {
 
     @Test
     void serverRunTwiceRejected() {
-        FPTServer server = FPTServer.create("127.0.0.1", 0);
-        server.run();
+        FPTServerFactory server = FPTServerFactory.create("127.0.0.1", 0);
+        FPTServer runtime = server.run();
         try {
             assertThrows(IllegalStateException.class, server::run);
         } finally {
-            server.stop();
+            runtime.stop();
         }
     }
 
     @Test
     void serverMessengerBeforeRun() {
-        FPTServer server = FPTServer.create("127.0.0.1", 0);
-        server.messenger(Messenger.empty());
-        server.run();
+        FPTServer server = FPTServerFactory.create("127.0.0.1", 0)
+                .handler(new ServerHandler() {
+                    @Override
+                    public void onConnectionActive(@NotNull FPTServer server, @NotNull Connection connection) {
+
+                    }
+
+                    @Override
+                    public void onConnectionInactive(@NotNull FPTServer server, @NotNull Connection connection) {
+
+                    }
+
+                    @Override
+                    public void onMessage(@NotNull FPTServer server, @NotNull Connection connection, @NotNull Message message) {
+
+                    }
+                })
+                .run();
         assertTrue(server.isRunning());
         server.stop();
     }
 
     @Test
     void serverMessengerAfterRunRejected() {
-        FPTServer server = FPTServer.create("127.0.0.1", 0);
-        server.run();
+        FPTServerFactory server = FPTServerFactory.create("127.0.0.1", 0);
+        FPTServer runtime = server.run();
         try {
-            assertThrows(IllegalStateException.class, () -> server.messenger(Messenger.empty()));
+            assertThrows(IllegalStateException.class, () -> server.handler(new ServerHandler() {
+                @Override
+                public void onConnectionActive(@NotNull FPTServer server, @NotNull Connection connection) {
+
+                }
+
+                @Override
+                public void onConnectionInactive(@NotNull FPTServer server, @NotNull Connection connection) {
+
+                }
+
+                @Override
+                public void onMessage(@NotNull FPTServer server, @NotNull Connection connection, @NotNull Message message) {
+
+                }
+            }));
         } finally {
-            server.stop();
+            runtime.stop();
         }
     }
 
     @Test
     void serverStopIsIdempotent() {
-        FPTServer server = FPTServer.create("127.0.0.1", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("127.0.0.1", 0).run();
         server.stop();
         assertFalse(server.isRunning());
         server.stop();
@@ -64,12 +95,10 @@ class LifecycleTest {
 
     @Test
     void clientCreateThenConnect() {
-        FPTServer server = FPTServer.create("0.0.0.0", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0).run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port);
-            client.connect();
+            FPTClient client = FPTClientFactory.create("127.0.0.1", port).connect();
             assertTrue(client.isConnected());
             client.disconnect();
             assertFalse(client.isConnected());
@@ -80,16 +109,15 @@ class LifecycleTest {
 
     @Test
     void clientConnectTwiceRejected() {
-        FPTServer server = FPTServer.create("0.0.0.0", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0).run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port);
-            client.connect();
+            FPTClientFactory client = FPTClientFactory.create("127.0.0.1", port);
+            FPTClient runtime = client.connect();
             try {
                 assertThrows(IllegalStateException.class, client::connect);
             } finally {
-                client.disconnect();
+                runtime.disconnect();
             }
         } finally {
             server.stop();
@@ -98,13 +126,27 @@ class LifecycleTest {
 
     @Test
     void clientMessengerBeforeConnect() {
-        FPTServer server = FPTServer.create("0.0.0.0", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0).run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port);
-            client.messenger(Messenger.empty());
-            client.connect();
+            FPTClient client = FPTClientFactory.create("127.0.0.1", port)
+                    .handler(new ClientHandler() {
+                        @Override
+                        public void onConnectionActive(@NotNull FPTClient client, @NotNull Connection connection) {
+
+                        }
+
+                        @Override
+                        public void onConnectionInactive(@NotNull FPTClient client, @NotNull Connection connection) {
+
+                        }
+
+                        @Override
+                        public void onMessage(@NotNull FPTClient client, @NotNull Connection connection, @NotNull Message message) {
+
+                        }
+                    })
+                    .connect();
             assertTrue(client.isConnected());
             client.disconnect();
         } finally {
@@ -114,16 +156,30 @@ class LifecycleTest {
 
     @Test
     void clientMessengerAfterConnectRejected() {
-        FPTServer server = FPTServer.create("0.0.0.0", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0).run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port);
-            client.connect();
+            FPTClientFactory client = FPTClientFactory.create("127.0.0.1", port);
+            FPTClient runtime = client.connect();
             try {
-                assertThrows(IllegalStateException.class, () -> client.messenger(Messenger.empty()));
+                assertThrows(IllegalStateException.class, () -> client.handler(new ClientHandler() {
+                    @Override
+                    public void onConnectionActive(@NotNull FPTClient client, @NotNull Connection connection) {
+
+                    }
+
+                    @Override
+                    public void onConnectionInactive(@NotNull FPTClient client, @NotNull Connection connection) {
+
+                    }
+
+                    @Override
+                    public void onMessage(@NotNull FPTClient client, @NotNull Connection connection, @NotNull Message message) {
+
+                    }
+                }));
             } finally {
-                client.disconnect();
+                runtime.disconnect();
             }
         } finally {
             server.stop();
@@ -132,12 +188,10 @@ class LifecycleTest {
 
     @Test
     void clientDisconnectIsIdempotent() {
-        FPTServer server = FPTServer.create("0.0.0.0", 0);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0).run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port);
-            client.connect();
+            FPTClient client = FPTClientFactory.create("127.0.0.1", port).connect();
             client.disconnect();
             assertFalse(client.isConnected());
             client.disconnect();
@@ -150,8 +204,7 @@ class LifecycleTest {
     @Test
     void serverWithCustomProtocol() {
         Protocol protocol = Protocol.create("test", 1);
-        FPTServer server = FPTServer.create("127.0.0.1", 0, protocol);
-        server.run();
+        FPTServer server = FPTServerFactory.create("127.0.0.1", 0, protocol).run();
         assertTrue(server.isRunning());
         server.stop();
     }
@@ -159,12 +212,10 @@ class LifecycleTest {
     @Test
     void clientConnectWithCustomProtocol() {
         Protocol protocol = Protocol.create("test", 1);
-        FPTServer server = FPTServer.create("0.0.0.0", 0, protocol);
-        server.run();
+        FPTServer server = FPTServerFactory.create("0.0.0.0", 0, protocol).run();
         int port = server.getPort();
         try {
-            FPTClient client = FPTClient.create("127.0.0.1", port, protocol);
-            client.connect();
+            FPTClient client = FPTClientFactory.create("127.0.0.1", port, protocol).connect();
             assertTrue(client.isConnected());
             client.disconnect();
         } finally {
@@ -175,8 +226,7 @@ class LifecycleTest {
     @Test
     void serverWithCustomEventGroup() {
         EventGroup eventGroup = EventGroup.nio();
-        FPTServer server = FPTServer.create("127.0.0.1", 0, eventGroup);
-        server.run();
+        FPTServer server = FPTServerFactory.create("127.0.0.1", 0, eventGroup).run();
         assertTrue(server.isRunning());
         server.stop();
         eventGroup.close();

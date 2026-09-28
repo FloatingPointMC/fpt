@@ -4,7 +4,6 @@ import io.github.floatingpointmc.fpt.codec.VarInt;
 import io.github.floatingpointmc.fpt.protocol.*;
 import io.github.floatingpointmc.fpt.protocol.message.Message;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
-import io.github.floatingpointmc.fpt.transport.Messenger;
 import io.github.floatingpointmc.fpt.transport.netty.NettyFrameDecoder;
 import io.github.floatingpointmc.fpt.transport.netty.NettyMessageDecoder;
 import io.github.floatingpointmc.fpt.transport.netty.NettyMessageEncoder;
@@ -19,28 +18,21 @@ import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class NettyServerTransport {
     private static final Logger LOGGER = Logger.getLogger(NettyServerTransport.class.getName());
 
     private final @NotNull Protocol protocol;
     private final @NotNull EventGroup eventGroup;
     private final boolean ownedEventGroup;
-    private final @NotNull ArrayList<Messenger> messenger;
+    private final @NotNull List<ServerHandler> handler;
+    private FPTServer server;
 
-    NettyServerTransport(@NotNull Protocol protocol, @NotNull EventGroup eventGroup,
-                         boolean ownedEventGroup, @NotNull List<Messenger> messenger) {
-        this.protocol = protocol;
-        this.eventGroup = eventGroup;
-        this.ownedEventGroup = ownedEventGroup;
-        this.messenger = new ArrayList<>(messenger);
-    }
-
-    @NotNull NettyServerRuntime start(@NotNull String host, int port) throws InterruptedException {
+    @NotNull FPTServer start(@NotNull String host, int port) throws InterruptedException {
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(eventGroup.bossGroup(), eventGroup.workerGroup())
                 .channel(NioServerSocketChannel.class)
@@ -52,7 +44,7 @@ final class NettyServerTransport {
                         pipeline.addLast("handshake-handler", new ServerHandshakeHandler(protocol));
                         pipeline.addLast("c2s-decoder", new NettyMessageDecoder(protocol, MessageDirection.C2S));
                         pipeline.addLast("s2c-encoder", new NettyMessageEncoder(protocol));
-                        pipeline.addLast("handler", new ServerChannelHandler(messenger));
+                        pipeline.addLast("handler", new ServerChannelHandler(handler));
                     }
                 })
                 .option(ChannelOption.SO_BACKLOG, 128)
@@ -62,7 +54,7 @@ final class NettyServerTransport {
         Channel serverChannel = future.channel();
         int actualPort = ((InetSocketAddress) serverChannel.localAddress()).getPort();
         LOGGER.info("FPT Server started on " + host + ":" + actualPort);
-        return new NettyServerRuntime(serverChannel, eventGroup, ownedEventGroup);
+        return server = new FPTServer(serverChannel, eventGroup, ownedEventGroup);
     }
 
     static final class ServerHandshakeHandler extends ChannelInboundHandlerAdapter {
@@ -131,26 +123,29 @@ final class NettyServerTransport {
     }
 
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-    static final class ServerChannelHandler extends ChannelInboundHandlerAdapter {
-        private final ArrayList<Messenger> messenger;
+    final class ServerChannelHandler extends ChannelInboundHandlerAdapter {
+        private final List<ServerHandler> handlers;
         private ClientConnection connection;
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
             connection = new ClientConnection(ctx.channel(), ctx.channel().remoteAddress(), ctx.channel().localAddress());
-            messenger.forEach(m -> m.onConnectionActive(connection));
+            server.connections.add(connection);
+            handlers.forEach(m -> m.onConnectionActive(server, connection));
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            messenger.forEach(m -> m.onConnectionInactive(connection));
+            handlers.forEach(m -> m.onConnectionInactive(server, connection));
+            connection.close();
+            server.connections.remove(connection);
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof Message) {
                 Message message = (Message) msg;
-                messenger.forEach(m -> m.onMessage(connection, message));
+                handlers.forEach(m -> m.onMessage(server, connection, message));
             } else {
                 ctx.fireChannelRead(msg);
             }
