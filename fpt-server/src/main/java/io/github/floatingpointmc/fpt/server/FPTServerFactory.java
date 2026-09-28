@@ -34,17 +34,17 @@ public final class FPTServerFactory {
     }
 
     public static @NotNull FPTServerFactory create(@NotNull String host, int port, @NotNull Protocol protocol) {
-        return new FPTServerFactory(host, port, protocol, EventGroup.nio(), true, Collections.emptyList());
+        return new FPTServerFactory(host, port, protocol, EventGroup.nio(), true, new ArrayList<>());
     }
 
     public static @NotNull FPTServerFactory create(@NotNull String host, int port, @NotNull EventGroup eventGroup) {
-        return new FPTServerFactory(host, port, Protocol.create(), eventGroup, false, Collections.emptyList());
+        return new FPTServerFactory(host, port, Protocol.create(), eventGroup, false, new ArrayList<>());
     }
 
     public static @NotNull FPTServerFactory create(@NotNull String host, int port,
                                                    @NotNull Protocol protocol,
                                                    @NotNull EventGroup eventGroup) {
-        return new FPTServerFactory(host, port, protocol, eventGroup, false, Collections.emptyList());
+        return new FPTServerFactory(host, port, protocol, eventGroup, false, new ArrayList<>());
     }
 
     public @NotNull FPTServerFactory handler(ServerHandler @NotNull ... handler) {

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,6 +41,7 @@ final class NettyClientTransport {
     public FPTClient connect(@NotNull String host, int port) throws InterruptedException {
         CountDownLatch handshakeLatch = new CountDownLatch(1);
         AtomicReference<Throwable> handshakeError = new AtomicReference<>();
+        ClientChannelHandler channelHandler = new ClientChannelHandler(handler);
 
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.group(eventGroup.workerGroup())
@@ -49,10 +51,14 @@ final class NettyClientTransport {
                     protected void initChannel(Channel ch) {
                         ChannelPipeline pipeline = ch.pipeline();
                         pipeline.addLast("frame-decoder", new NettyFrameDecoder(ProtocolConstants.MAX_PACKET_SIZE));
-                        pipeline.addLast("handshake-handler", new ClientHandshakeHandler(protocol, handshakeLatch, handshakeError));
+                        pipeline.addLast("handshake-handler", new ClientHandshakeHandler(
+                                protocol,
+                                handshakeLatch,
+                                handshakeError,
+                                thisChannel -> activate(thisChannel, channelHandler)));
                         pipeline.addLast("s2c-decoder", new NettyMessageDecoder(protocol, MessageDirection.S2C));
                         pipeline.addLast("c2s-encoder", new NettyMessageEncoder(protocol));
-                        pipeline.addLast("handler", new ClientChannelHandler(handler));
+                        pipeline.addLast("handler", channelHandler);
                     }
                 });
 
@@ -71,20 +77,28 @@ final class NettyClientTransport {
             if (ownedEventGroup) eventGroup.close();
             throw new RuntimeException("Handshake failed", error);
         }
-        Connection connection = new ServerConnection(clientChannel, clientChannel.remoteAddress(), clientChannel.localAddress());
-        LOGGER.info("Connected to " + host + ":" + port + " (handshake OK)");
-        return client = new FPTClient(clientChannel, connection, eventGroup, ownedEventGroup);
+        return client;
+    }
+
+    private void activate(Channel channel, ClientChannelHandler channelHandler) {
+        Connection connection = new ServerConnection(channel, channel.remoteAddress(), channel.localAddress());
+        client = new FPTClient(channel, connection, eventGroup, ownedEventGroup);
+        channelHandler.activate(client, connection);
     }
 
     static final class ClientHandshakeHandler extends ChannelInboundHandlerAdapter {
         private final Protocol protocol;
         private final CountDownLatch latch;
         private final AtomicReference<Throwable> error;
+        private final Consumer<Channel> onHandshakeSuccess;
+        private boolean handshakeSucceeded;
 
-        ClientHandshakeHandler(Protocol protocol, CountDownLatch latch, AtomicReference<Throwable> error) {
+        ClientHandshakeHandler(Protocol protocol, CountDownLatch latch, AtomicReference<Throwable> error,
+                              Consumer<Channel> onHandshakeSuccess) {
             this.protocol = protocol;
             this.latch = latch;
             this.error = error;
+            this.onHandshakeSuccess = onHandshakeSuccess;
         }
 
         @Override
@@ -129,6 +143,9 @@ final class NettyClientTransport {
                         return;
                     }
 
+                    handshakeSucceeded = true;
+                    ctx.pipeline().remove(this);
+                    onHandshakeSuccess.accept(ctx.channel());
                     latch.countDown();
 
                     if (nioBuf.hasRemaining()) {
@@ -149,9 +166,10 @@ final class NettyClientTransport {
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            error.compareAndSet(null, new RuntimeException("Connection closed before handshake completed"));
-            latch.countDown();
-            ctx.fireChannelInactive();
+            if (!handshakeSucceeded) {
+                error.compareAndSet(null, new RuntimeException("Connection closed before handshake completed"));
+                latch.countDown();
+            }
         }
 
         @Override
@@ -163,20 +181,30 @@ final class NettyClientTransport {
     }
 
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-    final class ClientChannelHandler extends ChannelInboundHandlerAdapter {
+    static final class ClientChannelHandler extends ChannelInboundHandlerAdapter {
         private final List<ClientHandler> handlers;
         private ServerConnection connection;
+        private FPTClient client;
+        private boolean activated;
+        private boolean inactiveNotified;
 
-        @Override
-        public void channelActive(ChannelHandlerContext ctx) {
-            connection = new ServerConnection(ctx.channel(), ctx.channel().remoteAddress(), ctx.channel().localAddress());
+        void activate(FPTClient client, Connection connection) {
+            if (activated) {
+                return;
+            }
+            this.client = client;
+            this.connection = (ServerConnection) connection;
+            activated = true;
             handlers.forEach(m -> m.onConnectionActive(client, connection));
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            handlers.forEach(m -> m.onConnectionInactive(client, connection));
-            connection.close();
+            if (activated && !inactiveNotified) {
+                inactiveNotified = true;
+                handlers.forEach(m -> m.onConnectionInactive(client, connection));
+                connection.close();
+            }
         }
 
         @Override
