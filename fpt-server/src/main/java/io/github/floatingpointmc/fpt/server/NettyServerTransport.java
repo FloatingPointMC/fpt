@@ -13,11 +13,11 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import java.net.InetSocketAddress;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -133,22 +133,24 @@ final class NettyServerTransport {
     @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     static final class ServerChannelHandler extends ChannelInboundHandlerAdapter {
         private final ArrayList<Messenger> messenger;
+        private ClientConnection connection;
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
-            messenger.forEach(m -> m.onConnectionActive(ctx.channel()));
+            connection = new ClientConnection(ctx.channel(), ctx.channel().remoteAddress(), ctx.channel().localAddress());
+            messenger.forEach(m -> m.onConnectionActive(connection));
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            messenger.forEach(m -> m.onConnectionInactive(ctx.channel()));
+            messenger.forEach(m -> m.onConnectionInactive(connection));
         }
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof Message) {
                 Message message = (Message) msg;
-                messenger.forEach(m -> m.onMessage(message));
+                messenger.forEach(m -> m.onMessage(connection, message));
             } else {
                 ctx.fireChannelRead(msg);
             }

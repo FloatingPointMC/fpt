@@ -1,23 +1,24 @@
 package io.github.floatingpointmc.fpt.server;
 
+import io.github.floatingpointmc.fpt.transport.Connection;
 import io.github.floatingpointmc.fpt.transport.EventGroup;
 import io.netty.channel.Channel;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.logging.Logger;
 
-final class NettyServerRuntime {
+public final class NettyServerRuntime {
     private static final Logger LOGGER = Logger.getLogger(NettyServerRuntime.class.getName());
-
-    @Getter
     private final @NotNull Channel serverChannel;
     @Getter
     private final int actualPort;
     @Getter
-    private final @NotNull CopyOnWriteArraySet<Channel> channels = new CopyOnWriteArraySet<>();
+    @Unmodifiable
+    private final @NotNull CopyOnWriteArraySet<Connection> connections = new CopyOnWriteArraySet<>();
     private final @NotNull EventGroup eventGroup;
     private final boolean ownedEventGroup;
 

@@ -19,7 +19,6 @@ public final class FPTServer {
     private final @NotNull EventGroup eventGroup;
     private final boolean ownedEventGroup;
     private final @NotNull List<Messenger> messengers;
-
     private @Nullable NettyServerRuntime runtime;
     @Getter
     private volatile boolean running = false;
@@ -61,7 +60,7 @@ public final class FPTServer {
         Collections.addAll(this.messengers, messenger);
     }
 
-    public void run() {
+    public NettyServerRuntime run() {
         if (running) {
             throw new IllegalStateException("Server is already running");
         }
@@ -73,6 +72,7 @@ public final class FPTServer {
             throw new RuntimeException("Failed to start server", e);
         }
         running = true;
+        return runtime;
     }
 
     public void stop() {
